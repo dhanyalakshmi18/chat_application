@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+message Authentication {
+	string request_type = 1;
+	string username = 2;
+	string password = 3;
+}
+
+message AuthenticationReply {
+	string text = 1;
+}
