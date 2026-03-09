@@ -144,11 +144,18 @@ wrefresh(menu);
   mvwprintw(menu,3,40,"1 - Register");
   mvwprintw(menu,4,40,"2 - Unregister");
   mvwprintw(menu,5,40,"3 - Login");
+  mvwprintw(menu,6,40,"0 - Quit the Application");
 
   //Get user input
   int choice = wgetch(menu);
 
-  if(choice == '1')
+  if(choice == '0')
+  {
+    delwin(menu);
+    endwin();
+    exit(0);
+  }
+  else if( choice == '1')
   {
     authentication_details( menu, 1, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
     if( strlen(username) != USERNAME_LENGTH || strlen(password)<MINIMUM_PASSWORD_LENGTH || strlen(password)>MAXIMUM_PASSWORD_LENGTH || validate_password(password) == 0 )
@@ -176,7 +183,7 @@ wrefresh(menu);
   }
   else
   {
-    mvwprintw(menu,6,5,"Please enter 1 or 2 or 3 only");
+    mvwprintw(menu,6,5,"Please enter 0 or 1 or 2 or 3 only");
     wrefresh(menu);
     return 1;
   }
