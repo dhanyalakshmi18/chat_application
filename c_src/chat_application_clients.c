@@ -177,6 +177,8 @@ wrefresh(menu);
   else
   {
     mvwprintw(menu,6,5,"Please enter 1 or 2 or 3 only");
+    wrefresh(menu);
+    return 1;
   }
   wrefresh(menu);
   return 0;
@@ -208,16 +210,19 @@ int chat_dashboard( WINDOW *menu, char *guest_username, int max_guest_user_name_
   else if( choice == '4' )
   {
     authentication_details(menu,choice,guest_username,password,authentication_request_type,max_guest_user_name_len,max_passwd_len,max_auth_req_type_len);
-    return 1;
+    return 2;
   }
   else
   {
+    mvwprintw(menu,6,5,"Please enter 1 or 2 or 3 or 4 only");
+    return 1;
   }
   return SUCCESS;
 }
 
 int create_custom_window( WINDOW *menu, char *page_type, char *username, char *password, char *authentication_request_type, int max_user_name_len, int max_passwd_len, int max_auth_req_type_len)
 { 
+	int choice = 0;
   while(1)
   {
     //Create a box around the window with the characters passed as an arguments.
@@ -225,14 +230,19 @@ int create_custom_window( WINDOW *menu, char *page_type, char *username, char *p
     
     if( strcmp(page_type,"welcome_page") == 0 )
     {
-      welcome_page( menu, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
+      while( welcome_page( menu, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len ) == 1)
+      {
+      }
       break;
     }
     else if( strcmp(page_type, "chat_dashboard") == 0)
     {
-      if( chat_dashboard( menu, username, max_user_name_len, password, max_passwd_len, authentication_request_type, max_auth_req_type_len ) == 1 )
+      while( (choice = chat_dashboard( menu, username, max_user_name_len, password, max_passwd_len, authentication_request_type, max_auth_req_type_len )) == 1 )
       {
-        return 1;
+      }
+      if( choice == 2 )
+      {
+          return 1;
       }
       break;
     }
