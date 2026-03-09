@@ -1,1 +1,2 @@
 -record(registerorderegister,{username,password}).
+-record(loginorlogout,{username}).

@@ -13,7 +13,7 @@
 
 #define FAILURE -1
 #define SUCCESS 0
-#define USERNAME_LENGTH 4
+#define USERNAME_LENGTH 5
 #define MINIMUM_PASSWORD_LENGTH 8
 #define MAXIMUM_PASSWORD_LENGTH 15
 
@@ -21,8 +21,9 @@ int authentication_details( WINDOW *menu, int authentication_type, char *usernam
 {
   werase(menu);
   box(menu, '|', '=');
-
-  echo();
+  printf("username %s\n",username);
+  printf("username-1 %s\n",username);
+  //echo();
   
   if(authentication_type == 1)
   {
@@ -36,13 +37,13 @@ int authentication_details( WINDOW *menu, int authentication_type, char *usernam
   }
   else if( authentication_type == 3)
   {
-    mvwprintw(menu,1,35,"Logout ");
-    snprintf(authentication_request_type,max_auth_req_type_len,"logout");
+    mvwprintw(menu,1,35,"Deregister ");
+    snprintf(authentication_request_type,max_auth_req_type_len,"unregister"); 
   }
   else
   {
-    mvwprintw(menu,1,35,"Deregister ");
-    snprintf(authentication_request_type,max_auth_req_type_len,"unregister");
+    mvwprintw(menu,1,35,"Logout ");
+    snprintf(authentication_request_type,max_auth_req_type_len,"logout");
   }
   echo();
   mvwprintw(menu,3,40,"Username: ");
@@ -131,8 +132,11 @@ int success_or_error_window(const char *success_or_error_message[], size_t lengt
   return 0;
 }
 
-int welcome_page( WINDOW *menu, int choice, char *username, char *password, char *authentication_request_type, int max_user_name_len, int max_passwd_len, int max_auth_req_type_len ) 
+int welcome_page( WINDOW *menu, char *username, char *password, char *authentication_request_type, int max_user_name_len, int max_passwd_len, int max_auth_req_type_len ) 
 {
+memset(username, 0, max_user_name_len);
+  memset(password, 0, max_passwd_len);
+  memset(authentication_request_type, 0, max_auth_req_type_len);
 touchwin(menu);
 wrefresh(menu);
   //Place this strings inside the custom window.
@@ -142,30 +146,29 @@ wrefresh(menu);
   mvwprintw(menu,5,40,"3 - Login");
 
   //Get user input
-  choice = wgetch(menu);
+  int choice = wgetch(menu);
 
   if(choice == '1')
   {
     authentication_details( menu, 1, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
-    if( strlen(username) < USERNAME_LENGTH || strlen(password)<MINIMUM_PASSWORD_LENGTH || strlen(password)>MAXIMUM_PASSWORD_LENGTH || validate_password(password) == 0 )
+    if( strlen(username) != USERNAME_LENGTH || strlen(password)<MINIMUM_PASSWORD_LENGTH || strlen(password)>MAXIMUM_PASSWORD_LENGTH || validate_password(password) == 0 )
     {
       //Call Error window
       const char *error_messages[] =
         {
             "Invalid username/password:",
-            "1. Username must be at least size 4",
+            "1. Username must be 4 characters",
             "2. Password must be between 8 and 15 characters"
         };
       size_t length = sizeof(error_messages) / sizeof(error_messages[0]);
       success_or_error_window(error_messages,length); 
-      
-      welcome_page( menu,choice, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
+      welcome_page( menu, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
       return 0;
     }
   }
   else if( choice == '2' )
   {
-    authentication_details( menu, 4, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
+    authentication_details( menu, 3, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
   }
   else if( choice == '3' )
   {
@@ -179,9 +182,42 @@ wrefresh(menu);
   return 0;
 }
 
+int chat_dashboard( WINDOW *menu, char *guest_username, int max_guest_user_name_len, char *password, int max_passwd_len, char *authentication_request_type, int max_auth_req_type_len )
+{
+  wrefresh(menu);
+  //Place this strings inside the custom window.
+  mvwprintw(menu,1,35,"CHAT APPLICATION");
+  mvwprintw(menu,3,40,"1 - Start Chatting");
+  mvwprintw(menu,4,40,"2 - New Messages");
+  mvwprintw(menu,5,40,"3 - History");
+  mvwprintw(menu,6,40,"4 - Logout");
+
+  //Get user input
+  int choice = wgetch(menu);
+
+  if( choice == '1')
+  {
+    werase(menu);
+    box(menu, '|', '=');
+    echo();
+    mvwprintw(menu,1,25,"CHAT APPLICATION");
+    mvwprintw(menu,3,40,"Friend Name: ");
+    wmove(menu,3,54);
+    wgetnstr(menu,guest_username,max_guest_user_name_len);
+  }
+  else if( choice == '4' )
+  {
+    authentication_details(menu,choice,guest_username,password,authentication_request_type,max_guest_user_name_len,max_passwd_len,max_auth_req_type_len);
+    return 1;
+  }
+  else
+  {
+  }
+  return SUCCESS;
+}
+
 int create_custom_window( WINDOW *menu, char *page_type, char *username, char *password, char *authentication_request_type, int max_user_name_len, int max_passwd_len, int max_auth_req_type_len)
 { 
-  int choice = 0;
   while(1)
   {
     //Create a box around the window with the characters passed as an arguments.
@@ -189,7 +225,15 @@ int create_custom_window( WINDOW *menu, char *page_type, char *username, char *p
     
     if( strcmp(page_type,"welcome_page") == 0 )
     {
-      welcome_page( menu, choice, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
+      welcome_page( menu, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
+      break;
+    }
+    else if( strcmp(page_type, "chat_dashboard") == 0)
+    {
+      if( chat_dashboard( menu, username, max_user_name_len, password, max_passwd_len, authentication_request_type, max_auth_req_type_len ) == 1 )
+      {
+        return 1;
+      }
       break;
     }
     else
@@ -198,7 +242,7 @@ int create_custom_window( WINDOW *menu, char *page_type, char *username, char *p
     }
    }
     
-  return choice;
+  return SUCCESS;
 }
 
 int receive_message( int socket_fd, void *message, size_t message_size_to_be_received )
@@ -236,9 +280,9 @@ int encode_or_decode_messages( int socket_fd, char *username, char *password, ch
 {
 	//Initialize protobuf and update structure values in that proto
 	Authentication auth_req = AUTHENTICATION__INIT;
-	auth_req.request_type = strdup(authentication_request_type);
-	auth_req.username = strdup(username);
-	auth_req.password = strdup(password);
+	auth_req.request_type = authentication_request_type;
+        auth_req.username = username;
+        auth_req.password = password;
 	size_t length_of_packet = authentication__get_packed_size(&auth_req);
 	uint8_t *buffer_to_store_formatted_message = malloc(length_of_packet);
 	if(buffer_to_store_formatted_message == NULL) 
@@ -252,7 +296,6 @@ int encode_or_decode_messages( int socket_fd, char *username, char *password, ch
 	send_message(socket_fd,buffer_to_store_formatted_message,length_of_packet);
 	free(buffer_to_store_formatted_message);
 	buffer_to_store_formatted_message = NULL;
-
 	uint32_t message_length_to_be_received = 0;
 	receive_message(socket_fd, &message_length_to_be_received, 4 );
 	uint32_t message_length = ntohl(message_length_to_be_received);
@@ -263,8 +306,20 @@ int encode_or_decode_messages( int socket_fd, char *username, char *password, ch
 	const char *reply_message[] = {reply->text};
 	size_t length = sizeof(reply_message) / sizeof(reply_message[0]);
 	success_or_error_window(reply_message,length);
-	authentication_reply__free_unpacked(reply,NULL);
-	free(buffer_to_receive_message);
+        if(strcmp(*reply_message,"Successfully Logged In") == 0)
+        {
+            authentication_reply__free_unpacked(reply,NULL);
+            free(buffer_to_receive_message);
+            return 1;
+        }
+        else if(strcmp(*reply_message,"Incorrect Username or Password-Failed to LogOut") == 0 )
+        {
+            authentication_reply__free_unpacked(reply,NULL);
+            free(buffer_to_receive_message);
+            return 1;
+        }
+        authentication_reply__free_unpacked(reply,NULL);
+        free(buffer_to_receive_message);
 	return 0;
 }
 
@@ -296,26 +351,65 @@ int initialize_socket()
   return socket_fd;
 }
 
+int register_loop(int socket_fd, WINDOW *menu, char *authentication_request_type,char *username, char *password, int max_user_name_len, int max_passwd_len, int max_auth_req_type_len )
+{
+  while(strcmp(authentication_request_type,"register") == 0)
+  {
+    memset(username, 0, max_user_name_len);
+    memset(password, 0, max_passwd_len);
+    create_custom_window( menu, "welcome_page", username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
+    if(encode_or_decode_messages( socket_fd, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len) == 1)
+    {
+	  break;
+    }
+    strcpy(authentication_request_type, "register");
+  }
+  int choice = 1;
+  while( (choice = create_custom_window( menu, "chat_dashboard", username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len )) == 1 )
+  {
+      if( encode_or_decode_messages( socket_fd, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len) == 1)
+      {
+        continue;
+      }
+      else
+      {
+        strcpy(authentication_request_type, "register");
+        return 1;
+      }
+  }
+  
+  //
+  return SUCCESS;
+}
+
 int main(int argc,char **argv)
 {  
   int socket_fd = initialize_socket();
-  int max_user_name_len = 125;
-  char *username = malloc(max_user_name_len);
+  int max_user_name_len = USERNAME_LENGTH;
+  char *username = malloc(max_user_name_len+1);
   if (username == NULL) {
     perror("Username malloc failed: ");
     exit(EXIT_FAILURE);
   }
+  
+  /*int max_guest_username_length = USERNAME_LENGTH;
+  char *guest_username = malloc(max_guest_username_length+1);
+  if (guest_username == NULL) {
+    perror("Guest Username malloc failed: ");
+    exit(EXIT_FAILURE);
+  }*/
+  
   int max_passwd_len = 16;//Since password length is 8 to 15 and +1 for null character.
-  char *password = malloc(max_passwd_len);
+  char *password = malloc(max_passwd_len+1);
   if (password == NULL) {
     perror("Password malloc failed: ");
     exit(EXIT_FAILURE);
   }
   
   int max_auth_req_type_len = 15;//Since password length is 8 to 15 and +1 for null character.
-  char *authentication_request_type = malloc(max_auth_req_type_len);
+  char *authentication_request_type = malloc(max_auth_req_type_len+1);
   if (authentication_request_type == NULL) {
-    perror("Password malloc failed: ");
+    perror("Authentication Type malloc failed: ");
     exit(EXIT_FAILURE);
   }
   memset(authentication_request_type, 0, max_auth_req_type_len);
@@ -328,13 +422,20 @@ int main(int argc,char **argv)
   curs_set(0);
   
   WINDOW *menu = window_configuration();
-  memset(username, 0, max_user_name_len);
-  memset(password, 0, max_passwd_len);
-  create_custom_window( menu, "welcome_page", username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
-  if(encode_or_decode_messages( socket_fd, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len) == FAILURE)
+  while( register_loop(socket_fd,menu, authentication_request_type, username, password, max_user_name_len, max_passwd_len, max_auth_req_type_len) == 1 )
   {
-	return FAILURE;
   }
+  /*while( create_custom_window( menu, "chat_dashboard", guest_username, password, authentication_request_type, max_guest_username_length, max_passwd_len, max_auth_req_type_len ) == 1)
+  {
+      if( encode_or_decode_messages( socket_fd, guest_username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len) == SUCCESS)
+      {
+        strcpy(authentication_request_type, "register");
+        register_loop(socket_fd,menu, authentication_request_type, username, password, max_user_name_len, max_passwd_len, max_auth_req_type_len);
+      }
+  }*/
+  
+  //Start Conversation
+  //start_chatting(
   delwin(menu);
   endwin();
   close(socket_fd);

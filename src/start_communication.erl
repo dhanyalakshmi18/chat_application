@@ -3,17 +3,20 @@
 -include("chat_application_pb.hrl").
 -define(MNESIA_DATABASE,mnesia_database).
 start(NewSocket) ->
-	{ok, <<Len:32/big>>} = gen_tcp:recv(NewSocket,4),
-	{ok, Data} = gen_tcp:recv(NewSocket, Len),
-	ExtractedData = chat_application_pb:decode_msg(Data,'Authentication'),
-	io:format("RM ~p ~n",[ExtractedData]),
-	#'Authentication'{request_type = RequestType, username = UserName, password = Password} = ExtractedData,
-	case RequestType of
-		"register"    -> user_authentication(register,NewSocket,UserName,Password);
-		"unregister"  -> user_authentication(unregister,NewSocket,UserName,Password);
-		"login"       -> user_authentication(login,NewSocket,UserName,Password);
-		"logout"      -> user_authentication(logout,NewSocket,UserName,Password)
+	case gen_tcp:recv(NewSocket,4) of
+		{ok, <<Len:32/big>>} -> {ok, Data} = gen_tcp:recv(NewSocket, Len),
+					ExtractedData = chat_application_pb:decode_msg(Data,'Authentication'),
+					io:format("RM ~p ~n",[ExtractedData]),
+					#'Authentication'{request_type = RequestType, username = UserName, password = Password} = ExtractedData,
+					case RequestType of
+						"register"    -> user_authentication(register,NewSocket,UserName,Password), start(NewSocket);
+						"unregister"  -> user_authentication(unregister,NewSocket,UserName,Password), start(NewSocket);
+						"login"       -> user_authentication(login,NewSocket,UserName,Password), start(NewSocket);
+						"logout"      -> user_authentication(logout,NewSocket,UserName,Password), start(NewSocket)
+					end;
+		_ -> ok
 	end.
+	
 	
 user_authentication(register,NewSocket,UserName,Password) ->
 	Reply = analyze_reply(gen_server:call(?MNESIA_DATABASE,{register_the_user,UserName,Password})),
