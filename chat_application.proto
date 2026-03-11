@@ -9,3 +9,15 @@ message Authentication {
 message AuthenticationReply {
 	string text = 1;
 }
+
+message ExchangeMessage {
+	string message_type = 1;
+	string conversation = 2;
+}
+
+message ChatEnvelope {
+	oneof payload {
+		Authentication auth = 1;
+		ExchangeMessage exchangemsg = 2;
+	}
+}

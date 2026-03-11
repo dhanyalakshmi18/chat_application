@@ -58,9 +58,13 @@
 
 -type 'AuthenticationReply'() :: #'AuthenticationReply'{}.
 
--export_type(['Authentication'/0, 'AuthenticationReply'/0]).
--type '$msg_name'() :: 'Authentication' | 'AuthenticationReply'.
--type '$msg'() :: 'Authentication'() | 'AuthenticationReply'().
+-type 'ExchangeMessage'() :: #'ExchangeMessage'{}.
+
+-type 'ChatEnvelope'() :: #'ChatEnvelope'{}.
+
+-export_type(['Authentication'/0, 'AuthenticationReply'/0, 'ExchangeMessage'/0, 'ChatEnvelope'/0]).
+-type '$msg_name'() :: 'Authentication' | 'AuthenticationReply' | 'ExchangeMessage' | 'ChatEnvelope'.
+-type '$msg'() :: 'Authentication'() | 'AuthenticationReply'() | 'ExchangeMessage'() | 'ChatEnvelope'().
 -export_type(['$msg_name'/0, '$msg'/0]).
 
 -if(?OTP_RELEASE >= 24).
@@ -88,7 +92,9 @@ encode_msg(Msg, MsgName, Opts) ->
     TrUserData = proplists:get_value(user_data, Opts),
     case MsgName of
         'Authentication' -> encode_msg_Authentication(id(Msg, TrUserData), TrUserData);
-        'AuthenticationReply' -> encode_msg_AuthenticationReply(id(Msg, TrUserData), TrUserData)
+        'AuthenticationReply' -> encode_msg_AuthenticationReply(id(Msg, TrUserData), TrUserData);
+        'ExchangeMessage' -> encode_msg_ExchangeMessage(id(Msg, TrUserData), TrUserData);
+        'ChatEnvelope' -> encode_msg_ChatEnvelope(id(Msg, TrUserData), TrUserData)
     end.
 
 
@@ -141,6 +147,53 @@ encode_msg_AuthenticationReply(#'AuthenticationReply'{text = F1}, Bin, TrUserDat
                end
            end
     end.
+
+encode_msg_ExchangeMessage(Msg, TrUserData) -> encode_msg_ExchangeMessage(Msg, <<>>, TrUserData).
+
+
+encode_msg_ExchangeMessage(#'ExchangeMessage'{message_type = F1, conversation = F2}, Bin, TrUserData) ->
+    B1 = if F1 == undefined -> Bin;
+            true ->
+                begin
+                    TrF1 = id(F1, TrUserData),
+                    case is_empty_string(TrF1) of
+                        true -> Bin;
+                        false -> e_type_string(TrF1, <<Bin/binary, 10>>, TrUserData)
+                    end
+                end
+         end,
+    if F2 == undefined -> B1;
+       true ->
+           begin
+               TrF2 = id(F2, TrUserData),
+               case is_empty_string(TrF2) of
+                   true -> B1;
+                   false -> e_type_string(TrF2, <<B1/binary, 18>>, TrUserData)
+               end
+           end
+    end.
+
+encode_msg_ChatEnvelope(Msg, TrUserData) -> encode_msg_ChatEnvelope(Msg, <<>>, TrUserData).
+
+
+encode_msg_ChatEnvelope(#'ChatEnvelope'{payload = F1}, Bin, TrUserData) ->
+    if F1 =:= undefined -> Bin;
+       true ->
+           case id(F1, TrUserData) of
+               {auth, TF1} -> begin TrTF1 = id(TF1, TrUserData), e_mfield_ChatEnvelope_auth(TrTF1, <<Bin/binary, 10>>, TrUserData) end;
+               {exchangemsg, TF1} -> begin TrTF1 = id(TF1, TrUserData), e_mfield_ChatEnvelope_exchangemsg(TrTF1, <<Bin/binary, 18>>, TrUserData) end
+           end
+    end.
+
+e_mfield_ChatEnvelope_auth(Msg, Bin, TrUserData) ->
+    SubBin = encode_msg_Authentication(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
+
+e_mfield_ChatEnvelope_exchangemsg(Msg, Bin, TrUserData) ->
+    SubBin = encode_msg_ExchangeMessage(Msg, <<>>, TrUserData),
+    Bin2 = e_varint(byte_size(SubBin), Bin),
+    <<Bin2/binary, SubBin/binary>>.
 
 -compile({nowarn_unused_function,e_type_sint/3}).
 e_type_sint(Value, Bin, _TrUserData) when Value >= 0 -> e_varint(Value * 2, Bin);
@@ -281,7 +334,9 @@ decode_msg_1_catch(Bin, MsgName, TrUserData) ->
 -endif.
 
 decode_msg_2_doit('Authentication', Bin, TrUserData) -> id(decode_msg_Authentication(Bin, TrUserData), TrUserData);
-decode_msg_2_doit('AuthenticationReply', Bin, TrUserData) -> id(decode_msg_AuthenticationReply(Bin, TrUserData), TrUserData).
+decode_msg_2_doit('AuthenticationReply', Bin, TrUserData) -> id(decode_msg_AuthenticationReply(Bin, TrUserData), TrUserData);
+decode_msg_2_doit('ExchangeMessage', Bin, TrUserData) -> id(decode_msg_ExchangeMessage(Bin, TrUserData), TrUserData);
+decode_msg_2_doit('ChatEnvelope', Bin, TrUserData) -> id(decode_msg_ChatEnvelope(Bin, TrUserData), TrUserData).
 
 
 
@@ -387,6 +442,126 @@ skip_32_AuthenticationReply(<<_:32, Rest/binary>>, Z1, Z2, F, F@_1, TrUserData) 
 
 skip_64_AuthenticationReply(<<_:64, Rest/binary>>, Z1, Z2, F, F@_1, TrUserData) -> dfp_read_field_def_AuthenticationReply(Rest, Z1, Z2, F, F@_1, TrUserData).
 
+decode_msg_ExchangeMessage(Bin, TrUserData) -> dfp_read_field_def_ExchangeMessage(Bin, 0, 0, 0, id([], TrUserData), id([], TrUserData), TrUserData).
+
+dfp_read_field_def_ExchangeMessage(<<10, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> d_field_ExchangeMessage_message_type(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
+dfp_read_field_def_ExchangeMessage(<<18, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> d_field_ExchangeMessage_conversation(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
+dfp_read_field_def_ExchangeMessage(<<>>, 0, 0, _, F@_1, F@_2, _) -> #'ExchangeMessage'{message_type = F@_1, conversation = F@_2};
+dfp_read_field_def_ExchangeMessage(Other, Z1, Z2, F, F@_1, F@_2, TrUserData) -> dg_read_field_def_ExchangeMessage(Other, Z1, Z2, F, F@_1, F@_2, TrUserData).
+
+dg_read_field_def_ExchangeMessage(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData) when N < 32 - 7 -> dg_read_field_def_ExchangeMessage(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData);
+dg_read_field_def_ExchangeMessage(<<0:1, X:7, Rest/binary>>, N, Acc, _, F@_1, F@_2, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+        10 -> d_field_ExchangeMessage_message_type(Rest, 0, 0, 0, F@_1, F@_2, TrUserData);
+        18 -> d_field_ExchangeMessage_conversation(Rest, 0, 0, 0, F@_1, F@_2, TrUserData);
+        _ ->
+            case Key band 7 of
+                0 -> skip_varint_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData);
+                1 -> skip_64_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData);
+                2 -> skip_length_delimited_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData);
+                3 -> skip_group_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData);
+                5 -> skip_32_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData)
+            end
+    end;
+dg_read_field_def_ExchangeMessage(<<>>, 0, 0, _, F@_1, F@_2, _) -> #'ExchangeMessage'{message_type = F@_1, conversation = F@_2}.
+
+d_field_ExchangeMessage_message_type(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData) when N < 57 -> d_field_ExchangeMessage_message_type(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData);
+d_field_ExchangeMessage_message_type(<<0:1, X:7, Rest/binary>>, N, Acc, F, _, F@_2, TrUserData) ->
+    {NewFValue, RestF} = begin Len = X bsl N + Acc, <<Utf8:Len/binary, Rest2/binary>> = Rest, {id(unicode:characters_to_list(Utf8, unicode), TrUserData), Rest2} end,
+    dfp_read_field_def_ExchangeMessage(RestF, 0, 0, F, NewFValue, F@_2, TrUserData).
+
+d_field_ExchangeMessage_conversation(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData) when N < 57 -> d_field_ExchangeMessage_conversation(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData);
+d_field_ExchangeMessage_conversation(<<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, _, TrUserData) ->
+    {NewFValue, RestF} = begin Len = X bsl N + Acc, <<Utf8:Len/binary, Rest2/binary>> = Rest, {id(unicode:characters_to_list(Utf8, unicode), TrUserData), Rest2} end,
+    dfp_read_field_def_ExchangeMessage(RestF, 0, 0, F, F@_1, NewFValue, TrUserData).
+
+skip_varint_ExchangeMessage(<<1:1, _:7, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> skip_varint_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
+skip_varint_ExchangeMessage(<<0:1, _:7, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> dfp_read_field_def_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
+
+skip_length_delimited_ExchangeMessage(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData) when N < 57 -> skip_length_delimited_ExchangeMessage(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData);
+skip_length_delimited_ExchangeMessage(<<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_ExchangeMessage(Rest2, 0, 0, F, F@_1, F@_2, TrUserData).
+
+skip_group_ExchangeMessage(Bin, _, Z2, FNum, F@_1, F@_2, TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_ExchangeMessage(Rest, 0, Z2, FNum, F@_1, F@_2, TrUserData).
+
+skip_32_ExchangeMessage(<<_:32, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> dfp_read_field_def_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
+
+skip_64_ExchangeMessage(<<_:64, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> dfp_read_field_def_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
+
+decode_msg_ChatEnvelope(Bin, TrUserData) -> dfp_read_field_def_ChatEnvelope(Bin, 0, 0, 0, id(undefined, TrUserData), TrUserData).
+
+dfp_read_field_def_ChatEnvelope(<<10, Rest/binary>>, Z1, Z2, F, F@_1, TrUserData) -> d_field_ChatEnvelope_auth(Rest, Z1, Z2, F, F@_1, TrUserData);
+dfp_read_field_def_ChatEnvelope(<<18, Rest/binary>>, Z1, Z2, F, F@_1, TrUserData) -> d_field_ChatEnvelope_exchangemsg(Rest, Z1, Z2, F, F@_1, TrUserData);
+dfp_read_field_def_ChatEnvelope(<<>>, 0, 0, _, F@_1, _) -> #'ChatEnvelope'{payload = F@_1};
+dfp_read_field_def_ChatEnvelope(Other, Z1, Z2, F, F@_1, TrUserData) -> dg_read_field_def_ChatEnvelope(Other, Z1, Z2, F, F@_1, TrUserData).
+
+dg_read_field_def_ChatEnvelope(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, TrUserData) when N < 32 - 7 -> dg_read_field_def_ChatEnvelope(Rest, N + 7, X bsl N + Acc, F, F@_1, TrUserData);
+dg_read_field_def_ChatEnvelope(<<0:1, X:7, Rest/binary>>, N, Acc, _, F@_1, TrUserData) ->
+    Key = X bsl N + Acc,
+    case Key of
+        10 -> d_field_ChatEnvelope_auth(Rest, 0, 0, 0, F@_1, TrUserData);
+        18 -> d_field_ChatEnvelope_exchangemsg(Rest, 0, 0, 0, F@_1, TrUserData);
+        _ ->
+            case Key band 7 of
+                0 -> skip_varint_ChatEnvelope(Rest, 0, 0, Key bsr 3, F@_1, TrUserData);
+                1 -> skip_64_ChatEnvelope(Rest, 0, 0, Key bsr 3, F@_1, TrUserData);
+                2 -> skip_length_delimited_ChatEnvelope(Rest, 0, 0, Key bsr 3, F@_1, TrUserData);
+                3 -> skip_group_ChatEnvelope(Rest, 0, 0, Key bsr 3, F@_1, TrUserData);
+                5 -> skip_32_ChatEnvelope(Rest, 0, 0, Key bsr 3, F@_1, TrUserData)
+            end
+    end;
+dg_read_field_def_ChatEnvelope(<<>>, 0, 0, _, F@_1, _) -> #'ChatEnvelope'{payload = F@_1}.
+
+d_field_ChatEnvelope_auth(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, TrUserData) when N < 57 -> d_field_ChatEnvelope_auth(Rest, N + 7, X bsl N + Acc, F, F@_1, TrUserData);
+d_field_ChatEnvelope_auth(<<0:1, X:7, Rest/binary>>, N, Acc, F, Prev, TrUserData) ->
+    {NewFValue, RestF} = begin Len = X bsl N + Acc, <<Bs:Len/binary, Rest2/binary>> = Rest, {id(decode_msg_Authentication(Bs, TrUserData), TrUserData), Rest2} end,
+    dfp_read_field_def_ChatEnvelope(RestF,
+                                    0,
+                                    0,
+                                    F,
+                                    case Prev of
+                                        undefined -> id({auth, NewFValue}, TrUserData);
+                                        {auth, MVPrev} -> id({auth, merge_msg_Authentication(MVPrev, NewFValue, TrUserData)}, TrUserData);
+                                        _ -> id({auth, NewFValue}, TrUserData)
+                                    end,
+                                    TrUserData).
+
+d_field_ChatEnvelope_exchangemsg(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, TrUserData) when N < 57 -> d_field_ChatEnvelope_exchangemsg(Rest, N + 7, X bsl N + Acc, F, F@_1, TrUserData);
+d_field_ChatEnvelope_exchangemsg(<<0:1, X:7, Rest/binary>>, N, Acc, F, Prev, TrUserData) ->
+    {NewFValue, RestF} = begin Len = X bsl N + Acc, <<Bs:Len/binary, Rest2/binary>> = Rest, {id(decode_msg_ExchangeMessage(Bs, TrUserData), TrUserData), Rest2} end,
+    dfp_read_field_def_ChatEnvelope(RestF,
+                                    0,
+                                    0,
+                                    F,
+                                    case Prev of
+                                        undefined -> id({exchangemsg, NewFValue}, TrUserData);
+                                        {exchangemsg, MVPrev} -> id({exchangemsg, merge_msg_ExchangeMessage(MVPrev, NewFValue, TrUserData)}, TrUserData);
+                                        _ -> id({exchangemsg, NewFValue}, TrUserData)
+                                    end,
+                                    TrUserData).
+
+skip_varint_ChatEnvelope(<<1:1, _:7, Rest/binary>>, Z1, Z2, F, F@_1, TrUserData) -> skip_varint_ChatEnvelope(Rest, Z1, Z2, F, F@_1, TrUserData);
+skip_varint_ChatEnvelope(<<0:1, _:7, Rest/binary>>, Z1, Z2, F, F@_1, TrUserData) -> dfp_read_field_def_ChatEnvelope(Rest, Z1, Z2, F, F@_1, TrUserData).
+
+skip_length_delimited_ChatEnvelope(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, TrUserData) when N < 57 -> skip_length_delimited_ChatEnvelope(Rest, N + 7, X bsl N + Acc, F, F@_1, TrUserData);
+skip_length_delimited_ChatEnvelope(<<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, TrUserData) ->
+    Length = X bsl N + Acc,
+    <<_:Length/binary, Rest2/binary>> = Rest,
+    dfp_read_field_def_ChatEnvelope(Rest2, 0, 0, F, F@_1, TrUserData).
+
+skip_group_ChatEnvelope(Bin, _, Z2, FNum, F@_1, TrUserData) ->
+    {_, Rest} = read_group(Bin, FNum),
+    dfp_read_field_def_ChatEnvelope(Rest, 0, Z2, FNum, F@_1, TrUserData).
+
+skip_32_ChatEnvelope(<<_:32, Rest/binary>>, Z1, Z2, F, F@_1, TrUserData) -> dfp_read_field_def_ChatEnvelope(Rest, Z1, Z2, F, F@_1, TrUserData).
+
+skip_64_ChatEnvelope(<<_:64, Rest/binary>>, Z1, Z2, F, F@_1, TrUserData) -> dfp_read_field_def_ChatEnvelope(Rest, Z1, Z2, F, F@_1, TrUserData).
+
 read_group(Bin, FieldNum) ->
     {NumBytes, EndTagLen} = read_gr_b(Bin, 0, 0, 0, 0, FieldNum),
     <<Group:NumBytes/binary, _:EndTagLen/binary, Rest/binary>> = Bin,
@@ -454,7 +629,9 @@ merge_msgs(Prev, New, MsgName, Opts) ->
     TrUserData = proplists:get_value(user_data, Opts),
     case MsgName of
         'Authentication' -> merge_msg_Authentication(Prev, New, TrUserData);
-        'AuthenticationReply' -> merge_msg_AuthenticationReply(Prev, New, TrUserData)
+        'AuthenticationReply' -> merge_msg_AuthenticationReply(Prev, New, TrUserData);
+        'ExchangeMessage' -> merge_msg_ExchangeMessage(Prev, New, TrUserData);
+        'ChatEnvelope' -> merge_msg_ChatEnvelope(Prev, New, TrUserData)
     end.
 
 -compile({nowarn_unused_function,merge_msg_Authentication/3}).
@@ -479,6 +656,27 @@ merge_msg_AuthenticationReply(#'AuthenticationReply'{text = PFtext}, #'Authentic
                                   true -> NFtext
                                end}.
 
+-compile({nowarn_unused_function,merge_msg_ExchangeMessage/3}).
+merge_msg_ExchangeMessage(#'ExchangeMessage'{message_type = PFmessage_type, conversation = PFconversation}, #'ExchangeMessage'{message_type = NFmessage_type, conversation = NFconversation}, _) ->
+    #'ExchangeMessage'{message_type =
+                           if NFmessage_type =:= undefined -> PFmessage_type;
+                              true -> NFmessage_type
+                           end,
+                       conversation =
+                           if NFconversation =:= undefined -> PFconversation;
+                              true -> NFconversation
+                           end}.
+
+-compile({nowarn_unused_function,merge_msg_ChatEnvelope/3}).
+merge_msg_ChatEnvelope(#'ChatEnvelope'{payload = PFpayload}, #'ChatEnvelope'{payload = NFpayload}, TrUserData) ->
+    #'ChatEnvelope'{payload =
+                        case {PFpayload, NFpayload} of
+                            {{auth, OPFpayload}, {auth, ONFpayload}} -> {auth, merge_msg_Authentication(OPFpayload, ONFpayload, TrUserData)};
+                            {{exchangemsg, OPFpayload}, {exchangemsg, ONFpayload}} -> {exchangemsg, merge_msg_ExchangeMessage(OPFpayload, ONFpayload, TrUserData)};
+                            {_, undefined} -> PFpayload;
+                            _ -> NFpayload
+                        end}.
+
 
 verify_msg(Msg) when tuple_size(Msg) >= 1 -> verify_msg(Msg, element(1, Msg), []);
 verify_msg(X) -> mk_type_error(not_a_known_message, X, []).
@@ -492,9 +690,15 @@ verify_msg(Msg, MsgName, Opts) ->
     case MsgName of
         'Authentication' -> v_msg_Authentication(Msg, [MsgName], TrUserData);
         'AuthenticationReply' -> v_msg_AuthenticationReply(Msg, [MsgName], TrUserData);
+        'ExchangeMessage' -> v_msg_ExchangeMessage(Msg, [MsgName], TrUserData);
+        'ChatEnvelope' -> v_msg_ChatEnvelope(Msg, [MsgName], TrUserData);
         _ -> mk_type_error(not_a_known_message, Msg, [])
     end.
 
+
+-compile({nowarn_unused_function,v_submsg_Authentication/3}).
+-dialyzer({nowarn_function,v_submsg_Authentication/3}).
+v_submsg_Authentication(Msg, Path, TrUserData) -> v_msg_Authentication(Msg, Path, TrUserData).
 
 -compile({nowarn_unused_function,v_msg_Authentication/3}).
 -dialyzer({nowarn_function,v_msg_Authentication/3}).
@@ -519,6 +723,34 @@ v_msg_AuthenticationReply(#'AuthenticationReply'{text = F1}, Path, TrUserData) -
     end,
     ok;
 v_msg_AuthenticationReply(X, Path, _TrUserData) -> mk_type_error({expected_msg, 'AuthenticationReply'}, X, Path).
+
+-compile({nowarn_unused_function,v_submsg_ExchangeMessage/3}).
+-dialyzer({nowarn_function,v_submsg_ExchangeMessage/3}).
+v_submsg_ExchangeMessage(Msg, Path, TrUserData) -> v_msg_ExchangeMessage(Msg, Path, TrUserData).
+
+-compile({nowarn_unused_function,v_msg_ExchangeMessage/3}).
+-dialyzer({nowarn_function,v_msg_ExchangeMessage/3}).
+v_msg_ExchangeMessage(#'ExchangeMessage'{message_type = F1, conversation = F2}, Path, TrUserData) ->
+    if F1 == undefined -> ok;
+       true -> v_type_string(F1, [message_type | Path], TrUserData)
+    end,
+    if F2 == undefined -> ok;
+       true -> v_type_string(F2, [conversation | Path], TrUserData)
+    end,
+    ok;
+v_msg_ExchangeMessage(X, Path, _TrUserData) -> mk_type_error({expected_msg, 'ExchangeMessage'}, X, Path).
+
+-compile({nowarn_unused_function,v_msg_ChatEnvelope/3}).
+-dialyzer({nowarn_function,v_msg_ChatEnvelope/3}).
+v_msg_ChatEnvelope(#'ChatEnvelope'{payload = F1}, Path, TrUserData) ->
+    case F1 of
+        undefined -> ok;
+        {auth, OF1} -> v_submsg_Authentication(OF1, [auth, payload | Path], TrUserData);
+        {exchangemsg, OF1} -> v_submsg_ExchangeMessage(OF1, [exchangemsg, payload | Path], TrUserData);
+        _ -> mk_type_error(invalid_oneof, F1, [payload | Path])
+    end,
+    ok;
+v_msg_ChatEnvelope(X, Path, _TrUserData) -> mk_type_error({expected_msg, 'ChatEnvelope'}, X, Path).
 
 -compile({nowarn_unused_function,v_type_string/3}).
 -dialyzer({nowarn_function,v_type_string/3}).
@@ -573,16 +805,20 @@ get_msg_defs() ->
       [#field{name = request_type, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []},
        #field{name = username, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []},
        #field{name = password, fnum = 3, rnum = 4, type = string, occurrence = optional, opts = []}]},
-     {{msg, 'AuthenticationReply'}, [#field{name = text, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []}]}].
+     {{msg, 'AuthenticationReply'}, [#field{name = text, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []}]},
+     {{msg, 'ExchangeMessage'}, [#field{name = message_type, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []}, #field{name = conversation, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []}]},
+     {{msg, 'ChatEnvelope'},
+      [#gpb_oneof{name = payload, rnum = 2,
+                  fields = [#field{name = auth, fnum = 1, rnum = 2, type = {msg, 'Authentication'}, occurrence = optional, opts = []}, #field{name = exchangemsg, fnum = 2, rnum = 2, type = {msg, 'ExchangeMessage'}, occurrence = optional, opts = []}], opts = []}]}].
 
 
-get_msg_names() -> ['Authentication', 'AuthenticationReply'].
+get_msg_names() -> ['Authentication', 'AuthenticationReply', 'ExchangeMessage', 'ChatEnvelope'].
 
 
 get_group_names() -> [].
 
 
-get_msg_or_group_names() -> ['Authentication', 'AuthenticationReply'].
+get_msg_or_group_names() -> ['Authentication', 'AuthenticationReply', 'ExchangeMessage', 'ChatEnvelope'].
 
 
 get_enum_names() -> [].
@@ -604,6 +840,10 @@ find_msg_def('Authentication') ->
      #field{name = username, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []},
      #field{name = password, fnum = 3, rnum = 4, type = string, occurrence = optional, opts = []}];
 find_msg_def('AuthenticationReply') -> [#field{name = text, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []}];
+find_msg_def('ExchangeMessage') -> [#field{name = message_type, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []}, #field{name = conversation, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []}];
+find_msg_def('ChatEnvelope') ->
+    [#gpb_oneof{name = payload, rnum = 2,
+                fields = [#field{name = auth, fnum = 1, rnum = 2, type = {msg, 'Authentication'}, occurrence = optional, opts = []}, #field{name = exchangemsg, fnum = 2, rnum = 2, type = {msg, 'ExchangeMessage'}, occurrence = optional, opts = []}], opts = []}];
 find_msg_def(_) -> error.
 
 
@@ -664,11 +904,15 @@ service_and_rpc_name_to_fqbins(S, R) -> error({gpb_error, {badservice_or_rpc, {S
 
 fqbin_to_msg_name(<<"Authentication">>) -> 'Authentication';
 fqbin_to_msg_name(<<"AuthenticationReply">>) -> 'AuthenticationReply';
+fqbin_to_msg_name(<<"ExchangeMessage">>) -> 'ExchangeMessage';
+fqbin_to_msg_name(<<"ChatEnvelope">>) -> 'ChatEnvelope';
 fqbin_to_msg_name(E) -> error({gpb_error, {badmsg, E}}).
 
 
 msg_name_to_fqbin('Authentication') -> <<"Authentication">>;
 msg_name_to_fqbin('AuthenticationReply') -> <<"AuthenticationReply">>;
+msg_name_to_fqbin('ExchangeMessage') -> <<"ExchangeMessage">>;
+msg_name_to_fqbin('ChatEnvelope') -> <<"ChatEnvelope">>;
 msg_name_to_fqbin(E) -> error({gpb_error, {badmsg, E}}).
 
 
@@ -707,7 +951,7 @@ get_all_source_basenames() -> ["chat_application.proto"].
 get_all_proto_names() -> ["chat_application"].
 
 
-get_msg_containment("chat_application") -> ['Authentication', 'AuthenticationReply'];
+get_msg_containment("chat_application") -> ['Authentication', 'AuthenticationReply', 'ChatEnvelope', 'ExchangeMessage'];
 get_msg_containment(P) -> error({gpb_error, {badproto, P}}).
 
 
@@ -727,6 +971,8 @@ get_enum_containment("chat_application") -> [];
 get_enum_containment(P) -> error({gpb_error, {badproto, P}}).
 
 
+get_proto_by_msg_name_as_fqbin(<<"ExchangeMessage">>) -> "chat_application";
+get_proto_by_msg_name_as_fqbin(<<"ChatEnvelope">>) -> "chat_application";
 get_proto_by_msg_name_as_fqbin(<<"AuthenticationReply">>) -> "chat_application";
 get_proto_by_msg_name_as_fqbin(<<"Authentication">>) -> "chat_application";
 get_proto_by_msg_name_as_fqbin(E) -> error({gpb_error, {badmsg, E}}).
