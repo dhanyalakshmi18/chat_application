@@ -17,7 +17,7 @@ init([]) ->
 	ok = mnesia:start(),
 	RegisterOrDeregister = mnesia:create_table(registerorderegister,[{attributes,record_info(fields,registerorderegister)},{disc_copies,[node() | nodes()]},{type,set}]),
 	check_table_creation_status(RegisterOrDeregister),
-	ets:new(loginorlogout,[named_table,{keypos, #loginorlogout.username}]),
+	ets:new(loginorlogout,[named_table,set,{keypos, #loginorlogout.username}]),
 	%%LoginOrLogout = mnesia:create_table(loginorlogout,[{attributes,record_info(fields,loginorlogout)},{disc_copies,[node() | nodes()]},{type,set}]),
 	%%check_table_creation_status(LoginOrLogout),
 	{ok,loginorlogout}.
@@ -46,13 +46,32 @@ handle_call({login,UserName,Password},_From,State) ->
 	Status = mnesia:transaction(fun() -> qlc:e(qlc:q([X || X<-mnesia:table(registerorderegister),X#registerorderegister.username =:= UserName,X#registerorderegister.password =:= Password])) end),
 	case Status of
 		{atomic,[]} -> {reply,"Incorrect Username or Password-Failed to LogIn",State};
-		{atomic,[_Record]} -> NewState = ets:insert(loginorlogout,#loginorlogout{username=UserName}),{reply,"Successfully Logged In",NewState}
+		{atomic,[_Record]} -> CheckLoginStatus = ets:lookup(loginorlogout,UserName),
+					case CheckLoginStatus of
+						[] -> NewState = ets:insert(loginorlogout,#loginorlogout{username=UserName}),{reply,"Successfully Logged In",NewState};
+						[_record] -> {reply,"User is Logged In, Logout before Login", State}
+					end 
 	end;
 handle_call({logout,UserName,Password},_From,State) ->
 	Status = mnesia:transaction(fun() -> qlc:e(qlc:q([X || X<-mnesia:table(registerorderegister),X#registerorderegister.username =:= UserName,X#registerorderegister.password =:= Password])) end),
 	case Status of
 		{atomic,[]} -> {reply,"Incorrect Username or Password-Failed to LogOut",State};
-		{atomic,[_Record]} -> NewState = ets:delete_object(loginorlogout,{loginorlogout,UserName}),{reply,"Successfully Logged Out",NewState}
+		{atomic,[_Record]} -> CheckLoginStatus = ets:lookup(loginorlogout,UserName),
+					case CheckLoginStatus of
+						[_record] -> NewState = ets:delete_object(loginorlogout,{loginorlogout,UserName}),{reply,"Successfully Logged Out",NewState};
+						[] -> {reply,"User is Logged out, Login before Logout",State}
+					end
+	end;
+
+handle_call({check_identity,UserName},_From,State) ->
+	Status = mnesia:transaction(fun() -> qlc:e(qlc:q([X || X<-mnesia:table(registerorderegister),X#registerorderegister.username =:= UserName])) end),
+	case Status of
+		{atomic,[]} -> {reply,"Unknown User",State};
+		_ -> LoginStatus = ets:lookup(loginorlogout,UserName),
+			case LoginStatus of
+				[] -> {reply,"user is offline",State};
+				[_Record] -> {reply,"user is online",State}
+			end
 	end.
 	
 handle_cast(_message,State) ->

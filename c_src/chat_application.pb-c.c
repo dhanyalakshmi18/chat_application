@@ -97,6 +97,96 @@ void   authentication_reply__free_unpacked
   assert(message->base.descriptor == &authentication_reply__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
+void   exchange_message__init
+                     (ExchangeMessage         *message)
+{
+  static const ExchangeMessage init_value = EXCHANGE_MESSAGE__INIT;
+  *message = init_value;
+}
+size_t exchange_message__get_packed_size
+                     (const ExchangeMessage *message)
+{
+  assert(message->base.descriptor == &exchange_message__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t exchange_message__pack
+                     (const ExchangeMessage *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &exchange_message__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t exchange_message__pack_to_buffer
+                     (const ExchangeMessage *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &exchange_message__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+ExchangeMessage *
+       exchange_message__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (ExchangeMessage *)
+     protobuf_c_message_unpack (&exchange_message__descriptor,
+                                allocator, len, data);
+}
+void   exchange_message__free_unpacked
+                     (ExchangeMessage *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &exchange_message__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   chat_envelope__init
+                     (ChatEnvelope         *message)
+{
+  static const ChatEnvelope init_value = CHAT_ENVELOPE__INIT;
+  *message = init_value;
+}
+size_t chat_envelope__get_packed_size
+                     (const ChatEnvelope *message)
+{
+  assert(message->base.descriptor == &chat_envelope__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t chat_envelope__pack
+                     (const ChatEnvelope *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &chat_envelope__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t chat_envelope__pack_to_buffer
+                     (const ChatEnvelope *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &chat_envelope__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+ChatEnvelope *
+       chat_envelope__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (ChatEnvelope *)
+     protobuf_c_message_unpack (&chat_envelope__descriptor,
+                                allocator, len, data);
+}
+void   chat_envelope__free_unpacked
+                     (ChatEnvelope *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &chat_envelope__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
 static const ProtobufCFieldDescriptor authentication__field_descriptors[3] =
 {
   {
@@ -197,5 +287,107 @@ const ProtobufCMessageDescriptor authentication_reply__descriptor =
   authentication_reply__field_indices_by_name,
   1,  authentication_reply__number_ranges,
   (ProtobufCMessageInit) authentication_reply__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor exchange_message__field_descriptors[2] =
+{
+  {
+    "message_type",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(ExchangeMessage, message_type),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "conversation",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(ExchangeMessage, conversation),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned exchange_message__field_indices_by_name[] = {
+  1,   /* field[1] = conversation */
+  0,   /* field[0] = message_type */
+};
+static const ProtobufCIntRange exchange_message__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor exchange_message__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "ExchangeMessage",
+  "ExchangeMessage",
+  "ExchangeMessage",
+  "",
+  sizeof(ExchangeMessage),
+  2,
+  exchange_message__field_descriptors,
+  exchange_message__field_indices_by_name,
+  1,  exchange_message__number_ranges,
+  (ProtobufCMessageInit) exchange_message__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor chat_envelope__field_descriptors[2] =
+{
+  {
+    "auth",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(ChatEnvelope, payload_case),
+    offsetof(ChatEnvelope, auth),
+    &authentication__descriptor,
+    NULL,
+    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "exchangemsg",
+    2,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(ChatEnvelope, payload_case),
+    offsetof(ChatEnvelope, exchangemsg),
+    &exchange_message__descriptor,
+    NULL,
+    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned chat_envelope__field_indices_by_name[] = {
+  0,   /* field[0] = auth */
+  1,   /* field[1] = exchangemsg */
+};
+static const ProtobufCIntRange chat_envelope__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor chat_envelope__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "ChatEnvelope",
+  "ChatEnvelope",
+  "ChatEnvelope",
+  "",
+  sizeof(ChatEnvelope),
+  2,
+  chat_envelope__field_descriptors,
+  chat_envelope__field_indices_by_name,
+  1,  chat_envelope__number_ranges,
+  (ProtobufCMessageInit) chat_envelope__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

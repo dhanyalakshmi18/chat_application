@@ -17,6 +17,8 @@ PROTOBUF_C__BEGIN_DECLS
 
 typedef struct Authentication Authentication;
 typedef struct AuthenticationReply AuthenticationReply;
+typedef struct ExchangeMessage ExchangeMessage;
+typedef struct ChatEnvelope ChatEnvelope;
 
 
 /* --- enums --- */
@@ -44,6 +46,38 @@ struct  AuthenticationReply
 #define AUTHENTICATION_REPLY__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&authentication_reply__descriptor) \
     , (char *)protobuf_c_empty_string }
+
+
+struct  ExchangeMessage
+{
+  ProtobufCMessage base;
+  char *message_type;
+  char *conversation;
+};
+#define EXCHANGE_MESSAGE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&exchange_message__descriptor) \
+    , (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string }
+
+
+typedef enum {
+  CHAT_ENVELOPE__PAYLOAD__NOT_SET = 0,
+  CHAT_ENVELOPE__PAYLOAD_AUTH = 1,
+  CHAT_ENVELOPE__PAYLOAD_EXCHANGEMSG = 2
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(CHAT_ENVELOPE__PAYLOAD__CASE)
+} ChatEnvelope__PayloadCase;
+
+struct  ChatEnvelope
+{
+  ProtobufCMessage base;
+  ChatEnvelope__PayloadCase payload_case;
+  union {
+    Authentication *auth;
+    ExchangeMessage *exchangemsg;
+  };
+};
+#define CHAT_ENVELOPE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&chat_envelope__descriptor) \
+    , CHAT_ENVELOPE__PAYLOAD__NOT_SET, {0} }
 
 
 /* Authentication methods */
@@ -84,6 +118,44 @@ AuthenticationReply *
 void   authentication_reply__free_unpacked
                      (AuthenticationReply *message,
                       ProtobufCAllocator *allocator);
+/* ExchangeMessage methods */
+void   exchange_message__init
+                     (ExchangeMessage         *message);
+size_t exchange_message__get_packed_size
+                     (const ExchangeMessage   *message);
+size_t exchange_message__pack
+                     (const ExchangeMessage   *message,
+                      uint8_t             *out);
+size_t exchange_message__pack_to_buffer
+                     (const ExchangeMessage   *message,
+                      ProtobufCBuffer     *buffer);
+ExchangeMessage *
+       exchange_message__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   exchange_message__free_unpacked
+                     (ExchangeMessage *message,
+                      ProtobufCAllocator *allocator);
+/* ChatEnvelope methods */
+void   chat_envelope__init
+                     (ChatEnvelope         *message);
+size_t chat_envelope__get_packed_size
+                     (const ChatEnvelope   *message);
+size_t chat_envelope__pack
+                     (const ChatEnvelope   *message,
+                      uint8_t             *out);
+size_t chat_envelope__pack_to_buffer
+                     (const ChatEnvelope   *message,
+                      ProtobufCBuffer     *buffer);
+ChatEnvelope *
+       chat_envelope__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   chat_envelope__free_unpacked
+                     (ChatEnvelope *message,
+                      ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
 typedef void (*Authentication_Closure)
@@ -91,6 +163,12 @@ typedef void (*Authentication_Closure)
                   void *closure_data);
 typedef void (*AuthenticationReply_Closure)
                  (const AuthenticationReply *message,
+                  void *closure_data);
+typedef void (*ExchangeMessage_Closure)
+                 (const ExchangeMessage *message,
+                  void *closure_data);
+typedef void (*ChatEnvelope_Closure)
+                 (const ChatEnvelope *message,
                   void *closure_data);
 
 /* --- services --- */
@@ -100,6 +178,8 @@ typedef void (*AuthenticationReply_Closure)
 
 extern const ProtobufCMessageDescriptor authentication__descriptor;
 extern const ProtobufCMessageDescriptor authentication_reply__descriptor;
+extern const ProtobufCMessageDescriptor exchange_message__descriptor;
+extern const ProtobufCMessageDescriptor chat_envelope__descriptor;
 
 PROTOBUF_C__END_DECLS
 
