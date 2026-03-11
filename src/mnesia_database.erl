@@ -32,10 +32,10 @@ handle_call({register_the_user,UserName,Password},_From,State) ->
 			end;
 		_ -> {reply,"User is already present",State}
 	end;
-handle_call({unregister_the_user,UserName,_Password},_From,State) ->
-	Status = mnesia:transaction(fun() -> qlc:e(qlc:q([X || X<-mnesia:table(registerorderegister),X#registerorderegister.username =:= UserName])) end),
+handle_call({unregister_the_user,UserName,Password},_From,State) ->
+	Status = mnesia:transaction(fun() -> qlc:e(qlc:q([X || X<-mnesia:table(registerorderegister),X#registerorderegister.username =:= UserName,X#registerorderegister.password =:= Password])) end),
 	case Status of
-		{atomic,[]} -> {reply,"Incorrect Username or Password",State};
+		{atomic,[]} -> {reply,"Incorrect Username or Password-Failed to deregister",State};
 		{atomic,[_Record]} -> DeleteUserFromLoginTable = ets:delete_object(loginorlogout,{loginorlogout,UserName}), DeleteDataFromRegisterationTable = mnesia:transaction(fun() -> mnesia:delete({registerorderegister,UserName}) end),
 			  case DeleteDataFromRegisterationTable of
 			  	{atomic,ok} -> {reply,"Unregistered the user Successfully",DeleteUserFromLoginTable};
