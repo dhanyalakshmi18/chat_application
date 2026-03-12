@@ -179,8 +179,7 @@ wrefresh(menu);
   mvwprintw(menu,3,40,"1 - Register");
   mvwprintw(menu,4,40,"2 - Unregister");
   mvwprintw(menu,5,40,"3 - Login");
-  mvwprintw(menu,6,40,"4 - Logout");
-  mvwprintw(menu,7,40,"0 - Quit the Application");
+  mvwprintw(menu,6,40,"0 - Quit the Application");
 
   //Get user input
   int choice = wgetch(menu);
@@ -206,7 +205,6 @@ wrefresh(menu);
       size_t length = sizeof(error_messages) / sizeof(error_messages[0]);
       success_or_error_window(error_messages,length); 
       welcome_page( menu, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
-      return 0;
     }
   }
   else if( choice == '2' )
@@ -217,13 +215,9 @@ wrefresh(menu);
   {
     authentication_details( menu, 2, username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
   }
-  else if( choice == '4' )
-  {
-    authentication_details(menu,choice,username,password,authentication_request_type,max_user_name_len,max_passwd_len,max_auth_req_type_len);
-  }
   else
   {
-    mvwprintw(menu,8,5,"Please enter 0 or 1 or 2 or 3 or 4 only");
+    mvwprintw(menu,8,5,"Please enter 0 or 1 or 2 or 3 only");
     wrefresh(menu);
     return 1;
   }
@@ -526,7 +520,7 @@ int encode_or_decode_messages( char *username, char *password, char *authenticat
             free(buffer_to_receive_message);
             return 1;
         }
-        else if((strcmp(*reply_message,"Incorrect Username or Password-Failed to LogOut") == 0 ) || ( (strcmp(*reply_message,"Incorrect Username or Password") == 0 ) && ( strcmp(authentication_request_type,"login") != 0)))
+        else if(strcmp(*reply_message,"Incorrect Username or Password-Failed to LogOut") == 0 )
         {
             authentication_reply__free_unpacked(reply,NULL);
             free(buffer_to_receive_message);
