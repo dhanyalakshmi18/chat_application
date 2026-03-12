@@ -9,16 +9,15 @@
 #include <ctype.h>
 #include <ctype.h>
 #include <sys/socket.h>
+#include <sqlite3.h>
 #include "chat_application.pb-c.h"
+#include "chat_application_clients.h"
+#include "sql_database.h"
 
-#define FAILURE -1
-#define SUCCESS 0
-#define USERNAME_LENGTH 5
-#define MINIMUM_PASSWORD_LENGTH 8
-#define MAXIMUM_PASSWORD_LENGTH 15
-
-int socket_fd = 0;
-char logged_in_user[6];
+//Initialize global variables
+sqlite3 *database = NULL;
+int socket_fd = -1;
+char logged_in_user[6] = "";
 
 int authentication_details( WINDOW *menu, int authentication_type, char *username, char *password, char *authentication_request_type, int max_user_name_len, int max_passwd_len, int max_auth_req_type_len ) 
 {
@@ -601,7 +600,8 @@ int register_loop( WINDOW *menu, char *authentication_request_type,char *usernam
 
 int main(int argc,char **argv)
 {  
-  socket_fd = initialize_socket();
+  socket_fd = initialize_socket(&database);
+  database = initialize_database(); // Initialize SQLite database and obtain database connection handle
   int max_user_name_len = USERNAME_LENGTH;
   char *username = malloc(max_user_name_len+1);
   if (username == NULL) {
