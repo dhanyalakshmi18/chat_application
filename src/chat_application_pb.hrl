@@ -28,7 +28,9 @@
 -define('EXCHANGEMESSAGE_PB_H', true).
 -record('ExchangeMessage',
         {message_type = []      :: unicode:chardata() | undefined, % = 1, optional
-         conversation = []      :: unicode:chardata() | undefined % = 2, optional
+         sender = []            :: unicode:chardata() | undefined, % = 2, optional
+         receiver = []          :: unicode:chardata() | undefined, % = 3, optional
+         conversation = []      :: unicode:chardata() | undefined % = 4, optional
         }).
 -endif.
 

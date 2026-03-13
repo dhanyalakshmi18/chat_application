@@ -52,11 +52,13 @@ struct  ExchangeMessage
 {
   ProtobufCMessage base;
   char *message_type;
+  char *sender;
+  char *receiver;
   char *conversation;
 };
 #define EXCHANGE_MESSAGE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&exchange_message__descriptor) \
-    , (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string }
+    , (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string }
 
 
 typedef enum {

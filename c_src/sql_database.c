@@ -1,7 +1,6 @@
 #include<stdio.h>
 #include<sqlite3.h>
 #include "chat_application_clients.h"
-#include "sql_database.h"
 
 int initialize_database(sqlite3 **db)
 {

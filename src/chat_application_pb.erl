@@ -151,7 +151,7 @@ encode_msg_AuthenticationReply(#'AuthenticationReply'{text = F1}, Bin, TrUserDat
 encode_msg_ExchangeMessage(Msg, TrUserData) -> encode_msg_ExchangeMessage(Msg, <<>>, TrUserData).
 
 
-encode_msg_ExchangeMessage(#'ExchangeMessage'{message_type = F1, conversation = F2}, Bin, TrUserData) ->
+encode_msg_ExchangeMessage(#'ExchangeMessage'{message_type = F1, sender = F2, receiver = F3, conversation = F4}, Bin, TrUserData) ->
     B1 = if F1 == undefined -> Bin;
             true ->
                 begin
@@ -162,13 +162,33 @@ encode_msg_ExchangeMessage(#'ExchangeMessage'{message_type = F1, conversation = 
                     end
                 end
          end,
-    if F2 == undefined -> B1;
+    B2 = if F2 == undefined -> B1;
+            true ->
+                begin
+                    TrF2 = id(F2, TrUserData),
+                    case is_empty_string(TrF2) of
+                        true -> B1;
+                        false -> e_type_string(TrF2, <<B1/binary, 18>>, TrUserData)
+                    end
+                end
+         end,
+    B3 = if F3 == undefined -> B2;
+            true ->
+                begin
+                    TrF3 = id(F3, TrUserData),
+                    case is_empty_string(TrF3) of
+                        true -> B2;
+                        false -> e_type_string(TrF3, <<B2/binary, 26>>, TrUserData)
+                    end
+                end
+         end,
+    if F4 == undefined -> B3;
        true ->
            begin
-               TrF2 = id(F2, TrUserData),
-               case is_empty_string(TrF2) of
-                   true -> B1;
-                   false -> e_type_string(TrF2, <<B1/binary, 18>>, TrUserData)
+               TrF4 = id(F4, TrUserData),
+               case is_empty_string(TrF4) of
+                   true -> B3;
+                   false -> e_type_string(TrF4, <<B3/binary, 34>>, TrUserData)
                end
            end
     end.
@@ -442,56 +462,70 @@ skip_32_AuthenticationReply(<<_:32, Rest/binary>>, Z1, Z2, F, F@_1, TrUserData) 
 
 skip_64_AuthenticationReply(<<_:64, Rest/binary>>, Z1, Z2, F, F@_1, TrUserData) -> dfp_read_field_def_AuthenticationReply(Rest, Z1, Z2, F, F@_1, TrUserData).
 
-decode_msg_ExchangeMessage(Bin, TrUserData) -> dfp_read_field_def_ExchangeMessage(Bin, 0, 0, 0, id([], TrUserData), id([], TrUserData), TrUserData).
+decode_msg_ExchangeMessage(Bin, TrUserData) -> dfp_read_field_def_ExchangeMessage(Bin, 0, 0, 0, id([], TrUserData), id([], TrUserData), id([], TrUserData), id([], TrUserData), TrUserData).
 
-dfp_read_field_def_ExchangeMessage(<<10, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> d_field_ExchangeMessage_message_type(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
-dfp_read_field_def_ExchangeMessage(<<18, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> d_field_ExchangeMessage_conversation(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
-dfp_read_field_def_ExchangeMessage(<<>>, 0, 0, _, F@_1, F@_2, _) -> #'ExchangeMessage'{message_type = F@_1, conversation = F@_2};
-dfp_read_field_def_ExchangeMessage(Other, Z1, Z2, F, F@_1, F@_2, TrUserData) -> dg_read_field_def_ExchangeMessage(Other, Z1, Z2, F, F@_1, F@_2, TrUserData).
+dfp_read_field_def_ExchangeMessage(<<10, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData) -> d_field_ExchangeMessage_message_type(Rest, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+dfp_read_field_def_ExchangeMessage(<<18, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData) -> d_field_ExchangeMessage_sender(Rest, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+dfp_read_field_def_ExchangeMessage(<<26, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData) -> d_field_ExchangeMessage_receiver(Rest, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+dfp_read_field_def_ExchangeMessage(<<34, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData) -> d_field_ExchangeMessage_conversation(Rest, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+dfp_read_field_def_ExchangeMessage(<<>>, 0, 0, _, F@_1, F@_2, F@_3, F@_4, _) -> #'ExchangeMessage'{message_type = F@_1, sender = F@_2, receiver = F@_3, conversation = F@_4};
+dfp_read_field_def_ExchangeMessage(Other, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData) -> dg_read_field_def_ExchangeMessage(Other, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData).
 
-dg_read_field_def_ExchangeMessage(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData) when N < 32 - 7 -> dg_read_field_def_ExchangeMessage(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData);
-dg_read_field_def_ExchangeMessage(<<0:1, X:7, Rest/binary>>, N, Acc, _, F@_1, F@_2, TrUserData) ->
+dg_read_field_def_ExchangeMessage(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData) when N < 32 - 7 -> dg_read_field_def_ExchangeMessage(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+dg_read_field_def_ExchangeMessage(<<0:1, X:7, Rest/binary>>, N, Acc, _, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     Key = X bsl N + Acc,
     case Key of
-        10 -> d_field_ExchangeMessage_message_type(Rest, 0, 0, 0, F@_1, F@_2, TrUserData);
-        18 -> d_field_ExchangeMessage_conversation(Rest, 0, 0, 0, F@_1, F@_2, TrUserData);
+        10 -> d_field_ExchangeMessage_message_type(Rest, 0, 0, 0, F@_1, F@_2, F@_3, F@_4, TrUserData);
+        18 -> d_field_ExchangeMessage_sender(Rest, 0, 0, 0, F@_1, F@_2, F@_3, F@_4, TrUserData);
+        26 -> d_field_ExchangeMessage_receiver(Rest, 0, 0, 0, F@_1, F@_2, F@_3, F@_4, TrUserData);
+        34 -> d_field_ExchangeMessage_conversation(Rest, 0, 0, 0, F@_1, F@_2, F@_3, F@_4, TrUserData);
         _ ->
             case Key band 7 of
-                0 -> skip_varint_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData);
-                1 -> skip_64_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData);
-                2 -> skip_length_delimited_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData);
-                3 -> skip_group_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData);
-                5 -> skip_32_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, TrUserData)
+                0 -> skip_varint_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, F@_3, F@_4, TrUserData);
+                1 -> skip_64_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, F@_3, F@_4, TrUserData);
+                2 -> skip_length_delimited_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, F@_3, F@_4, TrUserData);
+                3 -> skip_group_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, F@_3, F@_4, TrUserData);
+                5 -> skip_32_ExchangeMessage(Rest, 0, 0, Key bsr 3, F@_1, F@_2, F@_3, F@_4, TrUserData)
             end
     end;
-dg_read_field_def_ExchangeMessage(<<>>, 0, 0, _, F@_1, F@_2, _) -> #'ExchangeMessage'{message_type = F@_1, conversation = F@_2}.
+dg_read_field_def_ExchangeMessage(<<>>, 0, 0, _, F@_1, F@_2, F@_3, F@_4, _) -> #'ExchangeMessage'{message_type = F@_1, sender = F@_2, receiver = F@_3, conversation = F@_4}.
 
-d_field_ExchangeMessage_message_type(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData) when N < 57 -> d_field_ExchangeMessage_message_type(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData);
-d_field_ExchangeMessage_message_type(<<0:1, X:7, Rest/binary>>, N, Acc, F, _, F@_2, TrUserData) ->
+d_field_ExchangeMessage_message_type(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData) when N < 57 -> d_field_ExchangeMessage_message_type(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+d_field_ExchangeMessage_message_type(<<0:1, X:7, Rest/binary>>, N, Acc, F, _, F@_2, F@_3, F@_4, TrUserData) ->
     {NewFValue, RestF} = begin Len = X bsl N + Acc, <<Utf8:Len/binary, Rest2/binary>> = Rest, {id(unicode:characters_to_list(Utf8, unicode), TrUserData), Rest2} end,
-    dfp_read_field_def_ExchangeMessage(RestF, 0, 0, F, NewFValue, F@_2, TrUserData).
+    dfp_read_field_def_ExchangeMessage(RestF, 0, 0, F, NewFValue, F@_2, F@_3, F@_4, TrUserData).
 
-d_field_ExchangeMessage_conversation(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData) when N < 57 -> d_field_ExchangeMessage_conversation(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData);
-d_field_ExchangeMessage_conversation(<<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, _, TrUserData) ->
+d_field_ExchangeMessage_sender(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData) when N < 57 -> d_field_ExchangeMessage_sender(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+d_field_ExchangeMessage_sender(<<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, _, F@_3, F@_4, TrUserData) ->
     {NewFValue, RestF} = begin Len = X bsl N + Acc, <<Utf8:Len/binary, Rest2/binary>> = Rest, {id(unicode:characters_to_list(Utf8, unicode), TrUserData), Rest2} end,
-    dfp_read_field_def_ExchangeMessage(RestF, 0, 0, F, F@_1, NewFValue, TrUserData).
+    dfp_read_field_def_ExchangeMessage(RestF, 0, 0, F, F@_1, NewFValue, F@_3, F@_4, TrUserData).
 
-skip_varint_ExchangeMessage(<<1:1, _:7, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> skip_varint_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData);
-skip_varint_ExchangeMessage(<<0:1, _:7, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> dfp_read_field_def_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
+d_field_ExchangeMessage_receiver(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData) when N < 57 -> d_field_ExchangeMessage_receiver(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+d_field_ExchangeMessage_receiver(<<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, _, F@_4, TrUserData) ->
+    {NewFValue, RestF} = begin Len = X bsl N + Acc, <<Utf8:Len/binary, Rest2/binary>> = Rest, {id(unicode:characters_to_list(Utf8, unicode), TrUserData), Rest2} end,
+    dfp_read_field_def_ExchangeMessage(RestF, 0, 0, F, F@_1, F@_2, NewFValue, F@_4, TrUserData).
 
-skip_length_delimited_ExchangeMessage(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData) when N < 57 -> skip_length_delimited_ExchangeMessage(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, TrUserData);
-skip_length_delimited_ExchangeMessage(<<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, TrUserData) ->
+d_field_ExchangeMessage_conversation(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData) when N < 57 -> d_field_ExchangeMessage_conversation(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+d_field_ExchangeMessage_conversation(<<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, F@_3, _, TrUserData) ->
+    {NewFValue, RestF} = begin Len = X bsl N + Acc, <<Utf8:Len/binary, Rest2/binary>> = Rest, {id(unicode:characters_to_list(Utf8, unicode), TrUserData), Rest2} end,
+    dfp_read_field_def_ExchangeMessage(RestF, 0, 0, F, F@_1, F@_2, F@_3, NewFValue, TrUserData).
+
+skip_varint_ExchangeMessage(<<1:1, _:7, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData) -> skip_varint_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+skip_varint_ExchangeMessage(<<0:1, _:7, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData) -> dfp_read_field_def_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData).
+
+skip_length_delimited_ExchangeMessage(<<1:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData) when N < 57 -> skip_length_delimited_ExchangeMessage(Rest, N + 7, X bsl N + Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData);
+skip_length_delimited_ExchangeMessage(<<0:1, X:7, Rest/binary>>, N, Acc, F, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     Length = X bsl N + Acc,
     <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_ExchangeMessage(Rest2, 0, 0, F, F@_1, F@_2, TrUserData).
+    dfp_read_field_def_ExchangeMessage(Rest2, 0, 0, F, F@_1, F@_2, F@_3, F@_4, TrUserData).
 
-skip_group_ExchangeMessage(Bin, _, Z2, FNum, F@_1, F@_2, TrUserData) ->
+skip_group_ExchangeMessage(Bin, _, Z2, FNum, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_ExchangeMessage(Rest, 0, Z2, FNum, F@_1, F@_2, TrUserData).
+    dfp_read_field_def_ExchangeMessage(Rest, 0, Z2, FNum, F@_1, F@_2, F@_3, F@_4, TrUserData).
 
-skip_32_ExchangeMessage(<<_:32, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> dfp_read_field_def_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
+skip_32_ExchangeMessage(<<_:32, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData) -> dfp_read_field_def_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData).
 
-skip_64_ExchangeMessage(<<_:64, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, TrUserData) -> dfp_read_field_def_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, TrUserData).
+skip_64_ExchangeMessage(<<_:64, Rest/binary>>, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData) -> dfp_read_field_def_ExchangeMessage(Rest, Z1, Z2, F, F@_1, F@_2, F@_3, F@_4, TrUserData).
 
 decode_msg_ChatEnvelope(Bin, TrUserData) -> dfp_read_field_def_ChatEnvelope(Bin, 0, 0, 0, id(undefined, TrUserData), TrUserData).
 
@@ -657,10 +691,19 @@ merge_msg_AuthenticationReply(#'AuthenticationReply'{text = PFtext}, #'Authentic
                                end}.
 
 -compile({nowarn_unused_function,merge_msg_ExchangeMessage/3}).
-merge_msg_ExchangeMessage(#'ExchangeMessage'{message_type = PFmessage_type, conversation = PFconversation}, #'ExchangeMessage'{message_type = NFmessage_type, conversation = NFconversation}, _) ->
+merge_msg_ExchangeMessage(#'ExchangeMessage'{message_type = PFmessage_type, sender = PFsender, receiver = PFreceiver, conversation = PFconversation},
+                          #'ExchangeMessage'{message_type = NFmessage_type, sender = NFsender, receiver = NFreceiver, conversation = NFconversation}, _) ->
     #'ExchangeMessage'{message_type =
                            if NFmessage_type =:= undefined -> PFmessage_type;
                               true -> NFmessage_type
+                           end,
+                       sender =
+                           if NFsender =:= undefined -> PFsender;
+                              true -> NFsender
+                           end,
+                       receiver =
+                           if NFreceiver =:= undefined -> PFreceiver;
+                              true -> NFreceiver
                            end,
                        conversation =
                            if NFconversation =:= undefined -> PFconversation;
@@ -730,12 +773,18 @@ v_submsg_ExchangeMessage(Msg, Path, TrUserData) -> v_msg_ExchangeMessage(Msg, Pa
 
 -compile({nowarn_unused_function,v_msg_ExchangeMessage/3}).
 -dialyzer({nowarn_function,v_msg_ExchangeMessage/3}).
-v_msg_ExchangeMessage(#'ExchangeMessage'{message_type = F1, conversation = F2}, Path, TrUserData) ->
+v_msg_ExchangeMessage(#'ExchangeMessage'{message_type = F1, sender = F2, receiver = F3, conversation = F4}, Path, TrUserData) ->
     if F1 == undefined -> ok;
        true -> v_type_string(F1, [message_type | Path], TrUserData)
     end,
     if F2 == undefined -> ok;
-       true -> v_type_string(F2, [conversation | Path], TrUserData)
+       true -> v_type_string(F2, [sender | Path], TrUserData)
+    end,
+    if F3 == undefined -> ok;
+       true -> v_type_string(F3, [receiver | Path], TrUserData)
+    end,
+    if F4 == undefined -> ok;
+       true -> v_type_string(F4, [conversation | Path], TrUserData)
     end,
     ok;
 v_msg_ExchangeMessage(X, Path, _TrUserData) -> mk_type_error({expected_msg, 'ExchangeMessage'}, X, Path).
@@ -806,7 +855,11 @@ get_msg_defs() ->
        #field{name = username, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []},
        #field{name = password, fnum = 3, rnum = 4, type = string, occurrence = optional, opts = []}]},
      {{msg, 'AuthenticationReply'}, [#field{name = text, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []}]},
-     {{msg, 'ExchangeMessage'}, [#field{name = message_type, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []}, #field{name = conversation, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []}]},
+     {{msg, 'ExchangeMessage'},
+      [#field{name = message_type, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []},
+       #field{name = sender, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []},
+       #field{name = receiver, fnum = 3, rnum = 4, type = string, occurrence = optional, opts = []},
+       #field{name = conversation, fnum = 4, rnum = 5, type = string, occurrence = optional, opts = []}]},
      {{msg, 'ChatEnvelope'},
       [#gpb_oneof{name = payload, rnum = 2,
                   fields = [#field{name = auth, fnum = 1, rnum = 2, type = {msg, 'Authentication'}, occurrence = optional, opts = []}, #field{name = exchangemsg, fnum = 2, rnum = 2, type = {msg, 'ExchangeMessage'}, occurrence = optional, opts = []}], opts = []}]}].
@@ -840,7 +893,11 @@ find_msg_def('Authentication') ->
      #field{name = username, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []},
      #field{name = password, fnum = 3, rnum = 4, type = string, occurrence = optional, opts = []}];
 find_msg_def('AuthenticationReply') -> [#field{name = text, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []}];
-find_msg_def('ExchangeMessage') -> [#field{name = message_type, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []}, #field{name = conversation, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []}];
+find_msg_def('ExchangeMessage') ->
+    [#field{name = message_type, fnum = 1, rnum = 2, type = string, occurrence = optional, opts = []},
+     #field{name = sender, fnum = 2, rnum = 3, type = string, occurrence = optional, opts = []},
+     #field{name = receiver, fnum = 3, rnum = 4, type = string, occurrence = optional, opts = []},
+     #field{name = conversation, fnum = 4, rnum = 5, type = string, occurrence = optional, opts = []}];
 find_msg_def('ChatEnvelope') ->
     [#gpb_oneof{name = payload, rnum = 2,
                 fields = [#field{name = auth, fnum = 1, rnum = 2, type = {msg, 'Authentication'}, occurrence = optional, opts = []}, #field{name = exchangemsg, fnum = 2, rnum = 2, type = {msg, 'ExchangeMessage'}, occurrence = optional, opts = []}], opts = []}];

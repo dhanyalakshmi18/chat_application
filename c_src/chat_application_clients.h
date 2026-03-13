@@ -2,7 +2,7 @@
 #define HEADER_NAME
 
 #include<sqlite3.h>
-
+int initialize_database(sqlite3 **db);
 #define FAILURE -1
 #define SUCCESS 0
 #define USERNAME_LENGTH 5

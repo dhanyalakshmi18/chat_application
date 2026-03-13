@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#include <pthread.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <ctype.h>
@@ -12,7 +13,6 @@
 #include <sqlite3.h>
 #include "chat_application.pb-c.h"
 #include "chat_application_clients.h"
-#include "sql_database.h"
 
 //Initialize global variables
 sqlite3 *database = NULL;
@@ -259,7 +259,9 @@ char *exchange_messages(char *message_type, char *guest_username, char *message)
 {
   ExchangeMessage exchange_message = EXCHANGE_MESSAGE__INIT;
   exchange_message.message_type = message_type;
-  exchange_message.conversation = guest_username;//To validate user
+  exchange_message.sender = logged_in_user;
+  exchange_message.receiver = guest_username;
+  exchange_message.conversation = message;//To validate user
   
   ChatEnvelope message_exchange_packet = CHAT_ENVELOPE__INIT;
   message_exchange_packet.payload_case = 2; //For exchangemsg
@@ -345,16 +347,38 @@ int chat_window(char *guest_username, char *login_status)
   box(top_win,0,0);
   wrefresh(top_win);    // Show the top window and its border
   wrefresh(bottom_win); // Show the bottom window and its border
-  mvwprintw(top_win,1,5,"%s",guest_username);
+  mvwprintw(top_win,1,50,"%s",guest_username);
   wrefresh(top_win);    // Show the top window and its border
-  mvwprintw(top_win,2,5,"%s",login_status);
+  mvwprintw(top_win,2,50,"INFO: %s",login_status);
   wrefresh(top_win);    // Show the top window and its border
   noecho();
+  
+  //Get messages from user and forward it to Erlang server and store it in local database.
   char *user_input = get_dynamic_input(bottom_win);
-  char *message = exchange_messages("check_identity",guest_username, user_input);
-  mvwprintw(top_win,3,5,"INFO: %s",message);
-  free(user_input);
-  free((void *)message);
+  if(strcmp(user_input,"quit") == 0 )
+  {
+    return 1;
+  }
+  else
+  {
+    char *message = exchange_messages("check_identity",guest_username, user_input);
+    echo();
+    mvwprintw(top_win,4,5,"%s: %s",logged_in_user,user_input);
+    wgetch(top_win);
+    //mvwprintw(top_win,4,5,"%s: %s",guest_username,message);
+    //store_messages(logged_in_user,guest_username,message);
+    free((void *)message);
+  }
+  //free(user_input);
+  
+  //Window cleanup
+  /*werase(top_win);
+  werase(bottom_win);
+  wrefresh(top_win);
+  wrefresh(bottom_win);
+  delwin(top_win);
+  delwin(bottom_win);
+  refresh();*/
   return SUCCESS;
 }
 int friendlist(char *guest_username, int max_guest_user_name_len)
@@ -374,7 +398,7 @@ int friendlist(char *guest_username, int max_guest_user_name_len)
     wgetnstr(bottom_win,guest_username,max_guest_user_name_len);
     if(strcmp(guest_username,"quit") != 0)
     {
-      char *message = exchange_messages("check_identity",guest_username, NULL);
+      char *message = exchange_messages("check_identity",guest_username, "nil");
       mvwprintw(top_win,3,5,"INFO: %s",message);
       if(strcmp(message,"Unknown User") == 0)
       {
@@ -386,7 +410,10 @@ int friendlist(char *guest_username, int max_guest_user_name_len)
       }
       else
       {
-        chat_window( guest_username, message );
+        while(chat_window( guest_username, message ) != 1)
+        {
+        }
+        friendlist(guest_username,max_guest_user_name_len);//This logic helps to go back to friend list page if user enter "quit" from chat window.
       }
       free((void *)message);
     }
@@ -598,10 +625,32 @@ int register_loop( WINDOW *menu, char *authentication_request_type,char *usernam
   return SUCCESS;
 }
 
+// This thread only waits for messages FROM Erlang
+/*void* receiver_handler(void* socket_desc) {
+    int sock = *(int*)socket_desc;
+    char server_reply[2000];
+    int recv_size;
+
+    while(1) {
+        // This blocks until Erlang sends something
+        recv_size = recv(sock, server_reply, 2000, 0);
+        if (recv_size > 0) {
+            server_reply[recv_size] = '\0';
+            printf("\n[BACKGRD THREAD]: Received from Erlang: %s\n", server_reply);
+            //printf("Enter Message: "); // Re-print prompt
+            fflush(stdout);
+        } else if (recv_size == 0) {
+            printf("\nServer disconnected\n");
+            exit(0);
+        }
+    }
+    return NULL;
+}*/
+
 int main(int argc,char **argv)
 {  
-  socket_fd = initialize_socket(&database);
-  database = initialize_database(); // Initialize SQLite database and obtain database connection handle
+  socket_fd = initialize_socket();
+  initialize_database(&database); // Initialize SQLite database and obtain database connection handle
   int max_user_name_len = USERNAME_LENGTH;
   char *username = malloc(max_user_name_len+1);
   if (username == NULL) {
@@ -637,6 +686,13 @@ int main(int argc,char **argv)
   initscr();
   //Make cursor invisible by setting option to '0';if set to 1 then the cursor size is normal and if option is 2 then cursor is bigger in size.
   curs_set(0);
+  
+  //Create a helper thread which listens to incomming traffic from Erlang Server.
+  /*pthread_t thread_id;
+  if (pthread_create(&thread_id, NULL, receiver_handler, (void*)&socket_fd) < 0) {
+      perror("Could not create thread");
+      return 1;
+  }*/
   
   WINDOW *menu = window_configuration(1);
   while( register_loop(menu, authentication_request_type, username, password, max_user_name_len, max_passwd_len, max_auth_req_type_len) == 1 )

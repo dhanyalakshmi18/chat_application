@@ -13,17 +13,14 @@ start(NewSocket) ->
 						{'ChatEnvelope',{auth,AuthExtractedMsg}} ->
 							#'Authentication'{request_type = RequestType, username = UserName, password = Password} = AuthExtractedMsg,
 							case RequestType of
-								"register"    -> user_authentication({register_the_user,UserName,Password}, NewSocket), start(NewSocket);
+								"register"    -> user_authentication({register_the_user,UserName,Password,NewSocket}, NewSocket), start(NewSocket);
 								"unregister"  -> user_authentication({unregister_the_user,UserName,Password}, NewSocket), start(NewSocket);
 								"login"       -> user_authentication({login,UserName,Password}, NewSocket), start(NewSocket);
 								"logout"      -> user_authentication({logout,UserName,Password}, NewSocket), start(NewSocket)
 							end;
 						{'ChatEnvelope',{exchangemsg,ExchangeMessage}} -> 
-							#'ExchangeMessage'{message_type = MsgType, conversation = ActualMessage} = ExchangeMessage,
-							case MsgType of
-								"check_identity" -> user_authentication({list_to_atom(MsgType),ActualMessage},NewSocket), start(NewSocket);
-								_ -> ok
-							end
+							#'ExchangeMessage'{message_type = MsgType, sender = SenderName, receiver = ReceiverName, conversation = ActualMessage} = ExchangeMessage,
+							user_authentication({list_to_atom(MsgType),SenderName,ReceiverName,ActualMessage},NewSocket), start(NewSocket)
 					end;	
 		_ -> ok
 	end.
