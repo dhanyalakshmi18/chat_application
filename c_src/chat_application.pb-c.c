@@ -52,49 +52,49 @@ void   authentication__free_unpacked
   assert(message->base.descriptor == &authentication__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   authentication_reply__init
-                     (AuthenticationReply         *message)
+void   auth_and_id_check_reply__init
+                     (AuthAndIdCheckReply         *message)
 {
-  static const AuthenticationReply init_value = AUTHENTICATION_REPLY__INIT;
+  static const AuthAndIdCheckReply init_value = AUTH_AND_ID_CHECK_REPLY__INIT;
   *message = init_value;
 }
-size_t authentication_reply__get_packed_size
-                     (const AuthenticationReply *message)
+size_t auth_and_id_check_reply__get_packed_size
+                     (const AuthAndIdCheckReply *message)
 {
-  assert(message->base.descriptor == &authentication_reply__descriptor);
+  assert(message->base.descriptor == &auth_and_id_check_reply__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t authentication_reply__pack
-                     (const AuthenticationReply *message,
+size_t auth_and_id_check_reply__pack
+                     (const AuthAndIdCheckReply *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &authentication_reply__descriptor);
+  assert(message->base.descriptor == &auth_and_id_check_reply__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t authentication_reply__pack_to_buffer
-                     (const AuthenticationReply *message,
+size_t auth_and_id_check_reply__pack_to_buffer
+                     (const AuthAndIdCheckReply *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &authentication_reply__descriptor);
+  assert(message->base.descriptor == &auth_and_id_check_reply__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-AuthenticationReply *
-       authentication_reply__unpack
+AuthAndIdCheckReply *
+       auth_and_id_check_reply__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (AuthenticationReply *)
-     protobuf_c_message_unpack (&authentication_reply__descriptor,
+  return (AuthAndIdCheckReply *)
+     protobuf_c_message_unpack (&auth_and_id_check_reply__descriptor,
                                 allocator, len, data);
 }
-void   authentication_reply__free_unpacked
-                     (AuthenticationReply *message,
+void   auth_and_id_check_reply__free_unpacked
+                     (AuthAndIdCheckReply *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &authentication_reply__descriptor);
+  assert(message->base.descriptor == &auth_and_id_check_reply__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   exchange_message__init
@@ -251,7 +251,7 @@ const ProtobufCMessageDescriptor authentication__descriptor =
   (ProtobufCMessageInit) authentication__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor authentication_reply__field_descriptors[1] =
+static const ProtobufCFieldDescriptor auth_and_id_check_reply__field_descriptors[1] =
 {
   {
     "text",
@@ -259,34 +259,34 @@ static const ProtobufCFieldDescriptor authentication_reply__field_descriptors[1]
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(AuthenticationReply, text),
+    offsetof(AuthAndIdCheckReply, text),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned authentication_reply__field_indices_by_name[] = {
+static const unsigned auth_and_id_check_reply__field_indices_by_name[] = {
   0,   /* field[0] = text */
 };
-static const ProtobufCIntRange authentication_reply__number_ranges[1 + 1] =
+static const ProtobufCIntRange auth_and_id_check_reply__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 1 }
 };
-const ProtobufCMessageDescriptor authentication_reply__descriptor =
+const ProtobufCMessageDescriptor auth_and_id_check_reply__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "AuthenticationReply",
-  "AuthenticationReply",
-  "AuthenticationReply",
+  "AuthAndIdCheckReply",
+  "AuthAndIdCheckReply",
+  "AuthAndIdCheckReply",
   "",
-  sizeof(AuthenticationReply),
+  sizeof(AuthAndIdCheckReply),
   1,
-  authentication_reply__field_descriptors,
-  authentication_reply__field_indices_by_name,
-  1,  authentication_reply__number_ranges,
-  (ProtobufCMessageInit) authentication_reply__init,
+  auth_and_id_check_reply__field_descriptors,
+  auth_and_id_check_reply__field_indices_by_name,
+  1,  auth_and_id_check_reply__number_ranges,
+  (ProtobufCMessageInit) auth_and_id_check_reply__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
 static const ProtobufCFieldDescriptor exchange_message__field_descriptors[4] =
@@ -366,7 +366,7 @@ const ProtobufCMessageDescriptor exchange_message__descriptor =
   (ProtobufCMessageInit) exchange_message__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor chat_envelope__field_descriptors[2] =
+static const ProtobufCFieldDescriptor chat_envelope__field_descriptors[3] =
 {
   {
     "auth",
@@ -392,15 +392,28 @@ static const ProtobufCFieldDescriptor chat_envelope__field_descriptors[2] =
     0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "authandidcheckreply",
+    3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(ChatEnvelope, payload_case),
+    offsetof(ChatEnvelope, authandidcheckreply),
+    &auth_and_id_check_reply__descriptor,
+    NULL,
+    0 | PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned chat_envelope__field_indices_by_name[] = {
   0,   /* field[0] = auth */
+  2,   /* field[2] = authandidcheckreply */
   1,   /* field[1] = exchangemsg */
 };
 static const ProtobufCIntRange chat_envelope__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 2 }
+  { 0, 3 }
 };
 const ProtobufCMessageDescriptor chat_envelope__descriptor =
 {
@@ -410,7 +423,7 @@ const ProtobufCMessageDescriptor chat_envelope__descriptor =
   "ChatEnvelope",
   "",
   sizeof(ChatEnvelope),
-  2,
+  3,
   chat_envelope__field_descriptors,
   chat_envelope__field_indices_by_name,
   1,  chat_envelope__number_ranges,

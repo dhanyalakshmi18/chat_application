@@ -16,7 +16,7 @@ PROTOBUF_C__BEGIN_DECLS
 
 
 typedef struct Authentication Authentication;
-typedef struct AuthenticationReply AuthenticationReply;
+typedef struct AuthAndIdCheckReply AuthAndIdCheckReply;
 typedef struct ExchangeMessage ExchangeMessage;
 typedef struct ChatEnvelope ChatEnvelope;
 
@@ -38,13 +38,13 @@ struct  Authentication
     , (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string }
 
 
-struct  AuthenticationReply
+struct  AuthAndIdCheckReply
 {
   ProtobufCMessage base;
   char *text;
 };
-#define AUTHENTICATION_REPLY__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&authentication_reply__descriptor) \
+#define AUTH_AND_ID_CHECK_REPLY__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&auth_and_id_check_reply__descriptor) \
     , (char *)protobuf_c_empty_string }
 
 
@@ -64,7 +64,8 @@ struct  ExchangeMessage
 typedef enum {
   CHAT_ENVELOPE__PAYLOAD__NOT_SET = 0,
   CHAT_ENVELOPE__PAYLOAD_AUTH = 1,
-  CHAT_ENVELOPE__PAYLOAD_EXCHANGEMSG = 2
+  CHAT_ENVELOPE__PAYLOAD_EXCHANGEMSG = 2,
+  CHAT_ENVELOPE__PAYLOAD_AUTHANDIDCHECKREPLY = 3
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(CHAT_ENVELOPE__PAYLOAD__CASE)
 } ChatEnvelope__PayloadCase;
 
@@ -75,6 +76,7 @@ struct  ChatEnvelope
   union {
     Authentication *auth;
     ExchangeMessage *exchangemsg;
+    AuthAndIdCheckReply *authandidcheckreply;
   };
 };
 #define CHAT_ENVELOPE__INIT \
@@ -101,24 +103,24 @@ Authentication *
 void   authentication__free_unpacked
                      (Authentication *message,
                       ProtobufCAllocator *allocator);
-/* AuthenticationReply methods */
-void   authentication_reply__init
-                     (AuthenticationReply         *message);
-size_t authentication_reply__get_packed_size
-                     (const AuthenticationReply   *message);
-size_t authentication_reply__pack
-                     (const AuthenticationReply   *message,
+/* AuthAndIdCheckReply methods */
+void   auth_and_id_check_reply__init
+                     (AuthAndIdCheckReply         *message);
+size_t auth_and_id_check_reply__get_packed_size
+                     (const AuthAndIdCheckReply   *message);
+size_t auth_and_id_check_reply__pack
+                     (const AuthAndIdCheckReply   *message,
                       uint8_t             *out);
-size_t authentication_reply__pack_to_buffer
-                     (const AuthenticationReply   *message,
+size_t auth_and_id_check_reply__pack_to_buffer
+                     (const AuthAndIdCheckReply   *message,
                       ProtobufCBuffer     *buffer);
-AuthenticationReply *
-       authentication_reply__unpack
+AuthAndIdCheckReply *
+       auth_and_id_check_reply__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data);
-void   authentication_reply__free_unpacked
-                     (AuthenticationReply *message,
+void   auth_and_id_check_reply__free_unpacked
+                     (AuthAndIdCheckReply *message,
                       ProtobufCAllocator *allocator);
 /* ExchangeMessage methods */
 void   exchange_message__init
@@ -163,8 +165,8 @@ void   chat_envelope__free_unpacked
 typedef void (*Authentication_Closure)
                  (const Authentication *message,
                   void *closure_data);
-typedef void (*AuthenticationReply_Closure)
-                 (const AuthenticationReply *message,
+typedef void (*AuthAndIdCheckReply_Closure)
+                 (const AuthAndIdCheckReply *message,
                   void *closure_data);
 typedef void (*ExchangeMessage_Closure)
                  (const ExchangeMessage *message,
@@ -179,7 +181,7 @@ typedef void (*ChatEnvelope_Closure)
 /* --- descriptors --- */
 
 extern const ProtobufCMessageDescriptor authentication__descriptor;
-extern const ProtobufCMessageDescriptor authentication_reply__descriptor;
+extern const ProtobufCMessageDescriptor auth_and_id_check_reply__descriptor;
 extern const ProtobufCMessageDescriptor exchange_message__descriptor;
 extern const ProtobufCMessageDescriptor chat_envelope__descriptor;
 

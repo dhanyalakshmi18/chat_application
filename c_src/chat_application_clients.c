@@ -8,7 +8,6 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <ctype.h>
-#include <ctype.h>
 #include <sys/socket.h>
 #include <sqlite3.h>
 #include "chat_application.pb-c.h"
@@ -18,6 +17,12 @@
 sqlite3 *database = NULL;
 int socket_fd = -1;
 char logged_in_user[6] = "";
+char *reply = NULL;
+
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+int response_received = 0; // The flag
+
 
 int authentication_details( WINDOW *menu, int authentication_type, char *username, char *password, char *authentication_request_type, int max_user_name_len, int max_passwd_len, int max_auth_req_type_len ) 
 {
@@ -255,13 +260,13 @@ int send_message( const void *message, size_t message_size )
   return 0;
 }
 
-char *exchange_messages(char *message_type, char *guest_username, char *message)
+int exchange_messages(char *message_type, char *guest_username, char *message)
 {
   ExchangeMessage exchange_message = EXCHANGE_MESSAGE__INIT;
   exchange_message.message_type = message_type;
   exchange_message.sender = logged_in_user;
   exchange_message.receiver = guest_username;
-  exchange_message.conversation = message;//To validate user
+  exchange_message.conversation = message;
   
   ChatEnvelope message_exchange_packet = CHAT_ENVELOPE__INIT;
   message_exchange_packet.payload_case = 2; //For exchangemsg
@@ -284,7 +289,11 @@ char *exchange_messages(char *message_type, char *guest_username, char *message)
   free(buffer_to_store_formatted_message);
   buffer_to_store_formatted_message = NULL;
   
-  
+// Now T1 is awake and response_received is 1
+  /*char *reply_message = strdup(reply->text);
+  authentication_reply__free_unpacked(reply,NULL);
+  response_received = 0; // Reset for next time
+  pthread_mutex_unlock(&lock);
   uint32_t message_length_to_be_received = 0;
   receive_message(&message_length_to_be_received, 4 );
   uint32_t message_length = ntohl(message_length_to_be_received);
@@ -292,11 +301,9 @@ char *exchange_messages(char *message_type, char *guest_username, char *message)
   char *buffer_to_receive_message = malloc(message_length);
   receive_message(buffer_to_receive_message, message_length);
   AuthenticationReply *reply = authentication_reply__unpack(NULL, message_length, (const uint8_t *)buffer_to_receive_message);
-  char *reply_message = strdup(reply->text);
-  authentication_reply__free_unpacked(reply,NULL);
-  free(buffer_to_receive_message);
+  */
   
-  return reply_message;
+  return SUCCESS;
 }
 char* get_dynamic_input(WINDOW *win) {
     int capacity = 128;         // Initial size
@@ -339,7 +346,7 @@ char* get_dynamic_input(WINDOW *win) {
     buffer[length] = '\0'; // Null-terminate the string
     return buffer; // Caller is responsible for free()
 }
-int chat_window(char *guest_username, char *login_status)
+int chat_window(char *guest_username)
 {
   WINDOW *top_win = window_configuration(2);
   WINDOW *bottom_win = window_configuration(3);
@@ -349,7 +356,7 @@ int chat_window(char *guest_username, char *login_status)
   wrefresh(bottom_win); // Show the bottom window and its border
   mvwprintw(top_win,1,50,"%s",guest_username);
   wrefresh(top_win);    // Show the top window and its border
-  mvwprintw(top_win,2,50,"INFO: %s",login_status);
+  mvwprintw(top_win,2,50,"INFO: %s",reply);
   wrefresh(top_win);    // Show the top window and its border
   noecho();
   
@@ -359,7 +366,7 @@ int chat_window(char *guest_username, char *login_status)
   {
     return 1;
   }
-  else
+  /*else
   {
     char *message = exchange_messages("check_identity",guest_username, user_input);
     echo();
@@ -368,21 +375,23 @@ int chat_window(char *guest_username, char *login_status)
     //mvwprintw(top_win,4,5,"%s: %s",guest_username,message);
     //store_messages(logged_in_user,guest_username,message);
     free((void *)message);
-  }
+  }*/
   //free(user_input);
   
   //Window cleanup
-  /*werase(top_win);
+  werase(top_win);
   werase(bottom_win);
   wrefresh(top_win);
   wrefresh(bottom_win);
   delwin(top_win);
   delwin(bottom_win);
-  refresh();*/
+  refresh();
   return SUCCESS;
 }
+
 int friendlist(char *guest_username, int max_guest_user_name_len)
-{
+{        
+
     WINDOW *top_win = window_configuration(2);
     WINDOW *bottom_win = window_configuration(3);
     box(bottom_win, '|', '=');
@@ -392,33 +401,79 @@ int friendlist(char *guest_username, int max_guest_user_name_len)
     //echo();
     mvwprintw(top_win,1,5,"CHAT APPLICATION");
     wrefresh(top_win);    // Show the top window and its border
+    //Get List of Friends
+    int count = 0, capacity = 2, row = 0;
+    char **friendlist_array = malloc(capacity * sizeof(char *));
+ 
+    while( (count = read_data_from_database(database, &friendlist_array, &capacity, "friendnames")) == FAILURE)
+    {}    
+
+    if(count > 0)
+    {
+      //Contains data in DB
+      for(row = 0;row<count;row++)
+      {
+      	friendlist_array[row][0] = toupper(friendlist_array[row][0]);//To make first letter of the Name Capital.
+        mvwprintw(top_win,row+4,10,"%s",friendlist_array[row]);
+        wrefresh(top_win);
+      }
+      //free the memory allocated for friendlist array and array elemnets
+    for(int i=0;i<count;i++)
+        free(friendlist_array[i]);
+    }
+    free(friendlist_array);
+
     echo();
     mvwprintw(bottom_win,1,5,"Friend Name: ");
     wmove(bottom_win,1,19);
     wgetnstr(bottom_win,guest_username,max_guest_user_name_len);
     if(strcmp(guest_username,"quit") != 0)
     {
-      char *message = exchange_messages("check_identity",guest_username, "nil");
-      mvwprintw(top_win,3,5,"INFO: %s",message);
-      if(strcmp(message,"Unknown User") == 0)
+      exchange_messages("check_identity",guest_username, "nil");
+      pthread_mutex_lock(&lock);
+      while (response_received == 0) {
+          // This line STOPS T1 and releases the lock so T2 can work.
+          // T1 wakes up only when T2 signals.
+          pthread_cond_wait(&condition, &lock); 
+      }
+      if(strcmp(reply,"Unknown User") == 0)
       {
         werase(top_win);
         wrefresh(top_win);
-        const char *messages[] = { message };
+        const char *messages[] = { reply };
         success_or_error_window(messages,1);
+        free(reply);
+        response_received = 0; // Reset for next time
+        pthread_mutex_unlock(&lock);
+        delete_data_from_friend_names_table(database,guest_username);//Since that user is deregistred so delete that user from client's database.
         friendlist(guest_username, max_guest_user_name_len);
       }
       else
       {
-        while(chat_window( guest_username, message ) != 1)
+        mvwprintw(top_win,3,5,"INFO: %s",reply);
+        while(chat_window( guest_username ) != 1)
         {
         }
+        free(reply);
+        //Store Friend Info in Database
+        store_data_in_database(database,guest_username,"friendnames");
+        response_received = 0; // Reset for next time
+        pthread_mutex_unlock(&lock);
+
+        
+//printf("STORE DONE \n");
         friendlist(guest_username,max_guest_user_name_len);//This logic helps to go back to friend list page if user enter "quit" from chat window.
       }
-      free((void *)message);
     }
     else
     {
+      werase(top_win);
+    werase(bottom_win);
+    wrefresh(top_win);
+    wrefresh(bottom_win);
+    delwin(top_win);
+    delwin(bottom_win);
+    refresh();
       return 1;
     }
     
@@ -512,7 +567,6 @@ int encode_or_decode_messages( char *username, char *password, char *authenticat
 	auth_req.request_type = authentication_request_type;
         auth_req.username = username;
         auth_req.password = password;
-        
         ChatEnvelope chat_packet = CHAT_ENVELOPE__INIT;
         chat_packet.payload_case = 1; // Or CHAT_ENVELOPE__PAYLOAD_AUTH
         chat_packet.auth = &auth_req;
@@ -529,14 +583,49 @@ int encode_or_decode_messages( char *username, char *password, char *authenticat
 	send_message(buffer_to_store_formatted_message,length_of_packet);
 	free(buffer_to_store_formatted_message);
 	buffer_to_store_formatted_message = NULL;
-	uint32_t message_length_to_be_received = 0;
+	/*uint32_t message_length_to_be_received = 0;
 	receive_message(&message_length_to_be_received, 4 );
 	uint32_t message_length = ntohl(message_length_to_be_received);
 	//allocate memory for receiving message
 	char *buffer_to_receive_message = malloc(message_length);
 	receive_message(buffer_to_receive_message, message_length);
 	AuthenticationReply *reply = authentication_reply__unpack(NULL, message_length, (const uint8_t *)buffer_to_receive_message);
-	const char *reply_message[] = {reply->text};
+	*/
+
+	pthread_mutex_lock(&lock);
+  while (response_received == 0) {
+      // This line STOPS T1 and releases the lock so T2 can work.
+      // T1 wakes up only when T2 signals.
+      pthread_cond_wait(&condition, &lock); 
+  }
+// Now T1 is awake and response_received is 1
+	//size_t length = sizeof(reply) / sizeof(reply_message[0]);
+
+  const char *msg[] = {reply};
+
+	success_or_error_window(msg,1);
+        if(strcmp(reply,"Successfully Logged In") == 0)
+        {
+            strcpy(logged_in_user,username);
+            free(reply);
+            response_received = 0; // Reset for next time
+  pthread_mutex_unlock(&lock);
+            return 1;
+        }
+        else if(strcmp(reply,"Incorrect Username or Password-Failed to LogOut") == 0 )
+        {
+            free(reply);
+            response_received = 0; // Reset for next time
+  pthread_mutex_unlock(&lock);
+            return 1;
+        }
+        else
+        {
+          free(reply);
+          response_received = 0; // Reset for next time
+          pthread_mutex_unlock(&lock);
+        }
+	/*const char *reply_message[] = {reply->text};
 	size_t length = sizeof(reply_message) / sizeof(reply_message[0]);
 	success_or_error_window(reply_message,length);
         if(strcmp(*reply_message,"Successfully Logged In") == 0)
@@ -553,7 +642,7 @@ int encode_or_decode_messages( char *username, char *password, char *authenticat
             return 1;
         }
         authentication_reply__free_unpacked(reply,NULL);
-        free(buffer_to_receive_message);
+        free(buffer_to_receive_message);*/
 	return 0;
 }
 
@@ -592,16 +681,20 @@ int register_loop( WINDOW *menu, char *authentication_request_type,char *usernam
     memset(username, 0, max_user_name_len);
     memset(password, 0, max_passwd_len);
     create_custom_window( menu, "welcome_page", username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
+
     if(encode_or_decode_messages( username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len) == 1)
     {
-	  break;
+	    break;
     }
+
     strcpy(authentication_request_type, "register");
   }
   int choice = 1;
-  while( (choice = create_custom_window( menu, "chat_dashboard", username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len )) == 1 )
-  {
-    //This makes sure that the user who has logged in he can logout himself but cannot logout other users.
+  while( choice == 1 )
+  {        
+    choice = create_custom_window( menu, "chat_dashboard", username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len );
+
+    //This makes sure that the user who has logged in, he can logout himself but cannot logout other users.
       if(strcmp(username,logged_in_user) == 0)
       {
         if( encode_or_decode_messages( username, password, authentication_request_type, max_user_name_len, max_passwd_len, max_auth_req_type_len) == 1)
@@ -610,7 +703,7 @@ int register_loop( WINDOW *menu, char *authentication_request_type,char *usernam
         }
         else
         {
-          strcpy(authentication_request_type, "register");
+          strcpy(authentication_request_type, "register");//To go back to welcome page
           return 1;
         }
       }
@@ -626,26 +719,66 @@ int register_loop( WINDOW *menu, char *authentication_request_type,char *usernam
 }
 
 // This thread only waits for messages FROM Erlang
-/*void* receiver_handler(void* socket_desc) {
-    int sock = *(int*)socket_desc;
-    char server_reply[2000];
-    int recv_size;
-
+void* receiver_handler(void* socket_desc) {
     while(1) {
         // This blocks until Erlang sends something
-        recv_size = recv(sock, server_reply, 2000, 0);
-        if (recv_size > 0) {
-            server_reply[recv_size] = '\0';
-            printf("\n[BACKGRD THREAD]: Received from Erlang: %s\n", server_reply);
-            //printf("Enter Message: "); // Re-print prompt
-            fflush(stdout);
-        } else if (recv_size == 0) {
-            printf("\nServer disconnected\n");
-            exit(0);
-        }
+        uint32_t message_length_to_be_received = 0;
+        receive_message(&message_length_to_be_received, 4 );
+        uint32_t message_length = ntohl(message_length_to_be_received);
+        //allocate memory for receiving message
+        char *buffer_to_receive_message = malloc(message_length);
+        receive_message(buffer_to_receive_message, message_length);
+        //reply = authentication_reply__unpack(NULL, message_length, (const uint8_t *)buffer_to_receive_message);
+        
+        ChatEnvelope *envelope = chat_envelope__unpack(NULL, message_length, (const uint8_t *)buffer_to_receive_message);
+        /*if (envelope == NULL) {
+          // Log error (use a log file or ncurses window, not printf!)
+          return;
+        }*/
+        // 2. Check "payload_case" to see which message is inside
+        switch (envelope->payload_case) {
+
+        /*case CHAT_ENVELOPE__PAYLOAD_EXCHANGEMSG:
+            // Extract ExchangeMessage (The Chat)
+            if (envelope->exchangemsg) {
+                const char *from = envelope->exchangemsg->sender;
+                const char *text = envelope->exchangemsg->conversation;
+                
+                // Logic: Update TUI Chat Window
+                pthread_mutex_lock(&ui_lock);
+                wprintw(top_win, "[%s]: %s\n", from, text);
+                wrefresh(top_win);
+                pthread_mutex_unlock(&ui_lock);
+            }
+            break;*/
+
+        case CHAT_ENVELOPE__PAYLOAD_AUTHANDIDCHECKREPLY:
+            if (envelope->authandidcheckreply) {
+                const char *server_msg = envelope->authandidcheckreply->text;
+                
+                // Logic: Signal the Main Thread that login was successful
+                pthread_mutex_lock(&lock);
+                reply = strdup(server_msg);
+                response_received = 1;
+                pthread_cond_signal(&condition);
+                pthread_mutex_unlock(&lock);
+            }
+            break;
+
+        case CHAT_ENVELOPE__PAYLOAD__NOT_SET:
+            break;
+        default:
+            // Received an empty envelope or unknown type
+            break;
+    }
+
+    // 3. IMPORTANT: Free the memory
+    // This frees the envelope AND the inner message (auth, msg, or reply)
+    chat_envelope__free_unpacked(envelope, NULL);
+        free(buffer_to_receive_message);
     }
     return NULL;
-}*/
+}
 
 int main(int argc,char **argv)
 {  
@@ -688,11 +821,11 @@ int main(int argc,char **argv)
   curs_set(0);
   
   //Create a helper thread which listens to incomming traffic from Erlang Server.
-  /*pthread_t thread_id;
+  pthread_t thread_id;
   if (pthread_create(&thread_id, NULL, receiver_handler, (void*)&socket_fd) < 0) {
       perror("Could not create thread");
       return 1;
-  }*/
+  }
   
   WINDOW *menu = window_configuration(1);
   while( register_loop(menu, authentication_request_type, username, password, max_user_name_len, max_passwd_len, max_auth_req_type_len) == 1 )
