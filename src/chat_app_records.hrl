@@ -1,2 +1,2 @@
--record(registerorderegister,{username,password}).
+-record(registerorderegister,{username,password,socket_details}).
 -record(loginorlogout,{username}).

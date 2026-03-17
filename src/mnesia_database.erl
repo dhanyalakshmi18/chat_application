@@ -22,13 +22,13 @@ init([]) ->
 	%%check_table_creation_status(LoginOrLogout),
 	{ok,loginorlogout}.
 	
-handle_call({register_the_user,UserName,Password},_From,State) ->
+handle_call({register_the_user,UserName,Password,Socket_Info},_From,State) ->
 	Status = mnesia:transaction(fun() -> qlc:e(qlc:q([X || X<-mnesia:table(registerorderegister),X#registerorderegister.username =:= UserName])) end),
 	case Status of
-		{atomic,[]} -> InsertDataToRegisterationTable = mnesia:transaction(fun() -> mnesia:write(#registerorderegister{username = UserName,password = Password}) end),
+		{atomic,[]} -> InsertDataToRegisterationTable = mnesia:transaction(fun() -> mnesia:write(#registerorderegister{username = UserName,password = Password,socket_details = Socket_Info}) end),
 			  case InsertDataToRegisterationTable of
 			  	{atomic,ok} -> {reply,"Registered Successfully",State};
-			  	_ -> {reply,"Failed to Register",State}
+			  	_any -> io:format("here ~p ~n",[_any]),{reply,_any,State}
 			end;
 		_ -> {reply,"User is already present",State}
 	end;
@@ -63,15 +63,24 @@ handle_call({logout,UserName,Password},_From,State) ->
 					end
 	end;
 
-handle_call({check_identity,UserName},_From,State) ->
-	Status = mnesia:transaction(fun() -> qlc:e(qlc:q([X || X<-mnesia:table(registerorderegister),X#registerorderegister.username =:= UserName])) end),
+handle_call({check_identity,_SenderName,ReceiverName,_Message},_From,State) ->
+	Status = mnesia:transaction(fun() -> qlc:e(qlc:q([X || X<-mnesia:table(registerorderegister),X#registerorderegister.username =:= ReceiverName])) end),
 	case Status of
 		{atomic,[]} -> {reply,"Unknown User",State};
-		_ -> LoginStatus = ets:lookup(loginorlogout,UserName),
+		_ -> LoginStatus = ets:lookup(loginorlogout,ReceiverName),
 			case LoginStatus of
 				[] -> {reply,"user is offline",State};
 				[_Record] -> {reply,"user is online",State}
 			end
+	end;
+
+handle_call({conversation,SenderName,ReceiverName,Message},_From,State) ->
+	CheckLoginStatus = ets:lookup(loginorlogout,ReceiverName),
+	{atomic,Get_SocketInfo_of_ReceiverName} = mnesia:transaction(fun() -> qlc:e(qlc:q([X#registerorderegister.socket_details || X<-mnesia:table(registerorderegister), X#registerorderegister.username =:= ReceiverName])) end),
+	
+	case CheckLoginStatus of
+		[] -> {reply,"User is offline",State};
+		[_record] -> {reply,{hd(Get_SocketInfo_of_ReceiverName),"Successfully sent the message"},State}
 	end.
 	
 handle_cast(_message,State) ->

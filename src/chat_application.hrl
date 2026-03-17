@@ -17,9 +17,9 @@
         }).
 -endif.
 
--ifndef('AUTHENTICATIONREPLY_PB_H').
--define('AUTHENTICATIONREPLY_PB_H', true).
--record('AuthenticationReply',
+-ifndef('AUTHANDIDCHECKREPLY_PB_H').
+-define('AUTHANDIDCHECKREPLY_PB_H', true).
+-record('AuthAndIdCheckReply',
         {text = []              :: unicode:chardata() | undefined % = 1, optional
         }).
 -endif.
@@ -37,7 +37,7 @@
 -ifndef('CHATENVELOPE_PB_H').
 -define('CHATENVELOPE_PB_H', true).
 -record('ChatEnvelope',
-        {payload                :: {auth, chat_application:'Authentication'()} | {exchangemsg, chat_application:'ExchangeMessage'()} | undefined % oneof
+        {payload                :: {auth, chat_application:'Authentication'()} | {exchangemsg, chat_application:'ExchangeMessage'()} | {authandidcheckreply, chat_application:'AuthAndIdCheckReply'()} | undefined % oneof
         }).
 -endif.
 
