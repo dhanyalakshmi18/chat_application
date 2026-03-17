@@ -1,29 +1,25 @@
 -module(start_communication).
 -export([start/1]).
--include("chat_application_pb.hrl").
+-include("chat_application.hrl").
 -define(MNESIA_DATABASE,mnesia_database).
 start(NewSocket) ->
 	case gen_tcp:recv(NewSocket,4) of
 		{ok, <<Len:32/big>>} -> {ok, Data} = gen_tcp:recv(NewSocket, Len),
-		io:format("RD is ~p ~n",[Data]),
 		
-					ExtractedData = chat_application_pb:decode_msg(Data,'ChatEnvelope'),
+					ExtractedData = chat_application:decode_msg(Data,'ChatEnvelope'),
 					io:format("RM ~p ~n",[ExtractedData]),
 					case ExtractedData of
 						{'ChatEnvelope',{auth,AuthExtractedMsg}} ->
 							#'Authentication'{request_type = RequestType, username = UserName, password = Password} = AuthExtractedMsg,
 							case RequestType of
-								"register"    -> user_authentication({register_the_user,UserName,Password}, NewSocket), start(NewSocket);
+								"register"    -> user_authentication({register_the_user,UserName,Password,NewSocket}, NewSocket), start(NewSocket);
 								"unregister"  -> user_authentication({unregister_the_user,UserName,Password}, NewSocket), start(NewSocket);
 								"login"       -> user_authentication({login,UserName,Password}, NewSocket), start(NewSocket);
 								"logout"      -> user_authentication({logout,UserName,Password}, NewSocket), start(NewSocket)
 							end;
 						{'ChatEnvelope',{exchangemsg,ExchangeMessage}} -> 
-							#'ExchangeMessage'{message_type = MsgType, conversation = ActualMessage} = ExchangeMessage,
-							case MsgType of
-								"check_identity" -> user_authentication({list_to_atom(MsgType),ActualMessage},NewSocket), start(NewSocket);
-								_ -> ok
-							end
+							#'ExchangeMessage'{message_type = MsgType, sender = SenderName, receiver = ReceiverName, conversation = ActualMessage} = ExchangeMessage,
+							user_authentication({list_to_atom(MsgType),SenderName,ReceiverName,ActualMessage},NewSocket), start(NewSocket)
 					end;	
 		_ -> ok
 	end.
@@ -47,8 +43,12 @@ analyze_reply({error, Reason}) -> atom_to_list(Reason);
 analyze_reply(Reply) -> Reply.
 	
 encode_authentication_msg(NewSocket,Reply) ->
-	ToBeEncoded = #'AuthenticationReply'{text = Reply},
-	EncodedData = chat_application_pb:encode_msg(ToBeEncoded),
+	ToBeEncoded = #'AuthAndIdCheckReply'{text = Reply},
+	io:format("SEND: ~p ~n",[Reply]),
+	Envelope = #'ChatEnvelope'{
+    			payload = {authandidcheckreply, ToBeEncoded}
+			},
+	EncodedData = chat_application:encode_msg(Envelope),
 	ReplyLen = byte_size(EncodedData),
 	gen_tcp:send(NewSocket,<<ReplyLen:32/big,EncodedData/binary>>).
 	
